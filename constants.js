@@ -1,0 +1,19 @@
+export const DB_NAME = "RuntoghterDB";
+export const USERS_COLLECTION = "users";
+export const EVENTS_COLLECTION = "events";
+export const COMMENTS_COLLECTION = "comments";
+export const LIKES_COLLECTION = "likes";
+export const FRIENDS_COLLECTION = "friends";
+export const MESSAGES_COLLECTION = "messages";
+export const CONVERSATIONS_COLLECTION = "conversations";
+export const NOTIFICATIONS_COLLECTION = "notifications";
+export const PORT = process.env.PORT || 5000;
+export const MONGODB_URL =
+  process.env.MONGODB_URL || "mongodb://localhost:27017";
+export const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_key";
+export const SALT_ROUNDS = 10;
+export const TOKEN_EXPIRATION = "7d"; // 7 days
+export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+export const ALLOWED_FILE_TYPES = ["image/jpeg", "image/png", "image/gif"];
+export const DEFAULT_PROFILE_PIC = "default_profile_pic.png";
+export const DEFAULT_COVER_PIC = "default_cover_pic.png";
