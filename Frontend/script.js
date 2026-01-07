@@ -1,311 +1,332 @@
-// Sample events data
-let events = [
+// Import Leaflet library
+const L = window.L;
+
+// Data for running locations in Morocco
+const locations = [
   {
     id: 1,
-    name: "Course du Matin",
-    distance: 10,
-    date: "2026-01-15",
-    time: "07:00",
-    location: "Parc de la Ville",
-    level: "intermédiaire",
-    description:
-      "Course matinale pour bien commencer la journée. Parcours plat idéal pour tous.",
-    participants: 12,
+    name: "Corniche de Casablanca",
+    city: "Casablanca",
+    coords: [33.5927, -7.6356],
+    distance: "5-10 km",
+    difficulty: "Débutant",
+    runners: 342,
   },
   {
     id: 2,
-    name: "Semi-Marathon du Soir",
-    distance: 21,
-    date: "2026-01-20",
-    time: "18:30",
-    location: "Centre Sportif",
-    level: "avancé",
-    description:
-      "Défi semi-marathon pour coureurs expérimentés. Préparation recommandée.",
-    participants: 8,
+    name: "Forêt de Maâmora",
+    city: "Rabat",
+    coords: [34.0531, -6.7987],
+    distance: "8-15 km",
+    difficulty: "Intermédiaire",
+    runners: 256,
   },
   {
     id: 3,
-    name: "Jogging Débutants",
-    distance: 5,
-    date: "2026-01-10",
-    time: "19:00",
-    location: "Stade Municipal",
-    level: "débutant",
-    description:
-      "Séance d'initiation à la course à pied dans une ambiance conviviale.",
-    participants: 15,
+    name: "Jardins de la Ménara",
+    city: "Marrakech",
+    coords: [31.6225, -8.0225],
+    distance: "3-5 km",
+    difficulty: "Débutant",
+    runners: 189,
+  },
+  {
+    id: 4,
+    name: "Bord de mer Agadir",
+    city: "Agadir",
+    coords: [30.4278, -9.5981],
+    distance: "6-12 km",
+    difficulty: "Débutant",
+    runners: 167,
+  },
+  {
+    id: 5,
+    name: "Parc de la Ligue Arabe",
+    city: "Casablanca",
+    coords: [33.5842, -7.6228],
+    distance: "2-4 km",
+    difficulty: "Débutant",
+    runners: 423,
   },
 ];
 
-// Load events from localStorage
-function loadEvents() {
-  const stored = localStorage.getItem("runTogetherEvents");
-  if (stored) {
-    events = JSON.parse(stored);
-  }
-}
+// Data for upcoming runs
+const runs = [
+  {
+    id: 1,
+    title: "Morning Run Corniche",
+    location: "Casablanca",
+    date: "Sam 25 Jan",
+    time: "07:00",
+    distance: "8 km",
+    difficulty: "debutant",
+    difficultyLabel: "Débutant",
+    participants: 24,
+    maxParticipants: 30,
+    initials: ["MA", "SK", "YB", "NL"],
+  },
+  {
+    id: 2,
+    title: "Trail Maâmora",
+    location: "Rabat",
+    date: "Dim 26 Jan",
+    time: "08:00",
+    distance: "12 km",
+    difficulty: "intermediaire",
+    difficultyLabel: "Intermédiaire",
+    participants: 18,
+    maxParticipants: 25,
+    initials: ["AH", "RK", "FB"],
+  },
+  {
+    id: 3,
+    title: "Sunset Run Ménara",
+    location: "Marrakech",
+    date: "Sam 25 Jan",
+    time: "17:30",
+    distance: "5 km",
+    difficulty: "debutant",
+    difficultyLabel: "Débutant",
+    participants: 32,
+    maxParticipants: 40,
+    initials: ["OE", "SL", "KB", "ZM"],
+  },
+  {
+    id: 4,
+    title: "Beach Run Challenge",
+    location: "Agadir",
+    date: "Dim 26 Jan",
+    time: "06:30",
+    distance: "10 km",
+    difficulty: "intermediaire",
+    difficultyLabel: "Intermédiaire",
+    participants: 15,
+    maxParticipants: 20,
+    initials: ["HA", "MC", "JD"],
+  },
+  {
+    id: 5,
+    title: "Urban Night Run",
+    location: "Casablanca",
+    date: "Ven 24 Jan",
+    time: "20:00",
+    distance: "6 km",
+    difficulty: "debutant",
+    difficultyLabel: "Débutant",
+    participants: 45,
+    maxParticipants: 50,
+    initials: ["NB", "AS", "YK", "ML"],
+  },
+  {
+    id: 6,
+    title: "Marathon Training",
+    location: "Rabat",
+    date: "Sam 25 Jan",
+    time: "06:00",
+    distance: "21 km",
+    difficulty: "expert",
+    difficultyLabel: "Expert",
+    participants: 12,
+    maxParticipants: 15,
+    initials: ["TH", "RM"],
+  },
+];
 
-// Save events to localStorage
-function saveEvents() {
-  localStorage.setItem("runTogetherEvents", JSON.stringify(events));
-}
+// Initialize map
+let map;
+const markers = [];
 
-// Initialize app
-loadEvents();
+function initMap() {
+  // Center on Morocco
+  map = L.map("map").setView([31.7917, -7.0926], 6);
 
-// Theme toggle
-const themeToggle = document.getElementById("themeToggle");
-const body = document.body;
+  // Add dark tile layer
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+    subdomains: "abcd",
+    maxZoom: 19,
+  }).addTo(map);
 
-// Load theme preference
-const savedTheme = localStorage.getItem("theme");
-if (savedTheme === "night") {
-  body.classList.add("night-mode");
-  themeToggle.textContent = "☀️";
-}
+  // Add markers
+  locations.forEach((location) => {
+    const marker = L.circleMarker(location.coords, {
+      radius: 10,
+      fillColor: "#f97316",
+      color: "#fff",
+      weight: 2,
+      opacity: 1,
+      fillOpacity: 0.9,
+    }).addTo(map);
 
-themeToggle.addEventListener("click", () => {
-  body.classList.toggle("night-mode");
-  const isNight = body.classList.contains("night-mode");
-  themeToggle.textContent = isNight ? "☀️" : "🌙";
-  localStorage.setItem("theme", isNight ? "night" : "day");
-});
+    // Popup content
+    const popupContent = `
+      <div class="popup-content">
+        <h4>${location.name}</h4>
+        <p>${location.city}</p>
+        <p class="popup-distance">${location.distance} • ${location.difficulty}</p>
+        <p>${location.runners} coureurs actifs</p>
+      </div>
+    `;
 
-// Modal handling
-const modal = document.getElementById("createEventModal");
-const createBtn = document.getElementById("createEventBtn");
-const closeBtn = document.querySelector(".close");
-
-createBtn.addEventListener("click", () => {
-  modal.style.display = "block";
-  const today = new Date().toISOString().split("T")[0];
-  document.getElementById("eventDate").min = today;
-});
-
-closeBtn.addEventListener("click", () => {
-  modal.style.display = "none";
-});
-
-window.addEventListener("click", (e) => {
-  if (e.target === modal) {
-    modal.style.display = "none";
-  }
-});
-
-// Create event form
-const createForm = document.getElementById("createEventForm");
-createForm.addEventListener("submit", (e) => {
-  e.preventDefault();
-
-  const newEvent = {
-    id: Date.now(),
-    name: document.getElementById("eventName").value,
-    distance: parseInt(document.getElementById("eventDistance").value),
-    date: document.getElementById("eventDate").value,
-    time: document.getElementById("eventTime").value,
-    location: document.getElementById("eventLocation").value,
-    level: document.getElementById("eventLevel").value,
-    description: document.getElementById("eventDescription").value,
-    participants: 0,
-  };
-
-  events.push(newEvent);
-  saveEvents();
-  renderEvents();
-  modal.style.display = "none";
-  createForm.reset();
-});
-
-// Countdown timer
-function getCountdown(date, time) {
-  const eventDate = new Date(`${date}T${time}`);
-  const now = new Date();
-  const diff = eventDate - now;
-
-  if (diff < 0) {
-    return "Événement passé";
-  }
-
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-  if (days > 0) {
-    return `${days}j ${hours}h ${minutes}m`;
-  } else if (hours > 0) {
-    return `${hours}h ${minutes}m ${seconds}s`;
-  } else {
-    return `${minutes}m ${seconds}s`;
-  }
-}
-
-// Render events
-function renderEvents(filteredEvents = null) {
-  const container = document.getElementById("eventsContainer");
-  const eventsToRender = filteredEvents || events;
-
-  if (eventsToRender.length === 0) {
-    container.innerHTML =
-      '<p style="text-align: center; color: var(--text-secondary); padding: 40px;">Aucun événement trouvé</p>';
-    return;
-  }
-
-  container.innerHTML = eventsToRender
-    .map(
-      (event) => `
-                <div class="event-card" data-id="${event.id}">
-                    <div class="event-header">
-                        <div>
-                            <div class="event-title">${event.name}</div>
-                        </div>
-                        <span class="event-distance">${event.distance} km</span>
-                    </div>
-                    
-                    <div class="countdown" data-date="${
-                      event.date
-                    }" data-time="${event.time}">
-                        <div class="countdown-label">Démarre dans</div>
-                        <div class="countdown-time">${getCountdown(
-                          event.date,
-                          event.time
-                        )}</div>
-                    </div>
-                    
-                    <div class="event-info">
-                        <div class="info-item">
-                            <span>📅</span>
-                            <span>${formatDate(event.date)} à ${
-        event.time
-      }</span>
-                        </div>
-                        <div class="info-item">
-                            <span>📍</span>
-                            <span>${event.location}</span>
-                        </div>
-                        <div class="info-item">
-                            <span>👥</span>
-                            <span>${event.participants} participant(s)</span>
-                        </div>
-                    </div>
-                    
-                    <span class="event-level level-${event.level}">${
-        event.level
-      }</span>
-                    
-                    <p class="event-description">${event.description}</p>
-                    
-                    <div class="event-actions">
-                        <button class="btn-join" onclick="joinEvent(${
-                          event.id
-                        })">
-                            Rejoindre
-                        </button>
-                        <button class="btn-delete" onclick="deleteEvent(${
-                          event.id
-                        })">
-                            🗑️
-                        </button>
-                    </div>
-                </div>
-            `
-    )
-    .join("");
-
-  updateCountdowns();
-}
-
-// Update countdowns every second
-function updateCountdowns() {
-  setInterval(() => {
-    document.querySelectorAll(".countdown").forEach((el) => {
-      const date = el.dataset.date;
-      const time = el.dataset.time;
-      const timeEl = el.querySelector(".countdown-time");
-      if (timeEl) {
-        timeEl.textContent = getCountdown(date, time);
-      }
-    });
-  }, 1000);
-}
-
-// Format date
-function formatDate(dateString) {
-  const date = new Date(dateString);
-  const options = { day: "numeric", month: "long", year: "numeric" };
-  return date.toLocaleDateString("fr-FR", options);
-}
-
-// Join event
-function joinEvent(id) {
-  const event = events.find((e) => e.id === id);
-  if (event) {
-    event.participants++;
-    saveEvents();
-    renderEvents(getFilteredEvents());
-  }
-}
-
-// Delete event
-function deleteEvent(id) {
-  if (confirm("Êtes-vous sûr de vouloir supprimer cet événement ?")) {
-    events = events.filter((e) => e.id !== id);
-    saveEvents();
-    renderEvents(getFilteredEvents());
-  }
-}
-
-// Filtering
-function getFilteredEvents() {
-  const searchTerm = document.getElementById("searchInput").value.toLowerCase();
-  const distanceFilter = document.getElementById("distanceFilter").value;
-  const dateFilter = document.getElementById("dateFilter").value;
-
-  return events.filter((event) => {
-    const matchesSearch =
-      event.name.toLowerCase().includes(searchTerm) ||
-      event.location.toLowerCase().includes(searchTerm) ||
-      event.description.toLowerCase().includes(searchTerm);
-
-    const matchesDistance =
-      distanceFilter === "all" || event.distance === parseInt(distanceFilter);
-
-    let matchesDate = true;
-    if (dateFilter !== "all") {
-      const eventDate = new Date(event.date);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      if (dateFilter === "today") {
-        matchesDate = eventDate.toDateString() === today.toDateString();
-      } else if (dateFilter === "week") {
-        const weekFromNow = new Date(today);
-        weekFromNow.setDate(today.getDate() + 7);
-        matchesDate = eventDate >= today && eventDate <= weekFromNow;
-      } else if (dateFilter === "month") {
-        const monthFromNow = new Date(today);
-        monthFromNow.setMonth(today.getMonth() + 1);
-        matchesDate = eventDate >= today && eventDate <= monthFromNow;
-      }
-    }
-
-    return matchesSearch && matchesDistance && matchesDate;
+    marker.bindPopup(popupContent);
+    markers.push({ marker, location });
   });
 }
 
-// Add filter listeners
-document.getElementById("searchInput").addEventListener("input", () => {
-  renderEvents(getFilteredEvents());
-});
+// Render location list
+function renderLocationList() {
+  const container = document.getElementById("locationList");
 
-document.getElementById("distanceFilter").addEventListener("change", () => {
-  renderEvents(getFilteredEvents());
-});
+  const html = locations
+    .map(
+      (location) => `
+    <div class="location-item" data-id="${location.id}">
+      <div class="location-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+          <circle cx="12" cy="10" r="3"/>
+        </svg>
+      </div>
+      <div class="location-info">
+        <h4>${location.name}</h4>
+        <div class="location-meta">
+          <span>${location.city}</span>
+          <span>${location.distance}</span>
+        </div>
+      </div>
+    </div>
+  `
+    )
+    .join("");
 
-document.getElementById("dateFilter").addEventListener("change", () => {
-  renderEvents(getFilteredEvents());
-});
+  container.innerHTML = html;
 
-// Initial render
-renderEvents();
+  // Add click handlers
+  container.querySelectorAll(".location-item").forEach((item) => {
+    item.addEventListener("click", () => {
+      const id = Number.parseInt(item.dataset.id);
+      const location = locations.find((l) => l.id === id);
+
+      if (location) {
+        map.flyTo(location.coords, 13, { duration: 1.5 });
+
+        // Open popup
+        const markerData = markers.find((m) => m.location.id === id);
+        if (markerData) {
+          markerData.marker.openPopup();
+        }
+
+        // Update active state
+        container
+          .querySelectorAll(".location-item")
+          .forEach((i) => i.classList.remove("active"));
+        item.classList.add("active");
+      }
+    });
+  });
+}
+
+// Render runs grid
+function renderRuns() {
+  const container = document.getElementById("runsGrid");
+
+  const html = runs
+    .map(
+      (run) => `
+    <div class="run-card">
+      <div class="run-header">
+        <div>
+          <h3 class="run-title">${run.title}</h3>
+          <p class="run-location">${run.location}</p>
+        </div>
+        <span class="run-badge ${run.difficulty}">${run.difficultyLabel}</span>
+      </div>
+      <div class="run-details">
+        <div class="run-detail">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          ${run.date}
+        </div>
+        <div class="run-detail">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12,6 12,12 16,14"/>
+          </svg>
+          ${run.time}
+        </div>
+        <div class="run-detail">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+          ${run.distance}
+        </div>
+      </div>
+      <div class="run-footer">
+        <div class="run-participants">
+          <div class="participant-avatars">
+            ${run.initials
+              .slice(0, 4)
+              .map(
+                (initial) => `
+              <div class="participant-avatar">${initial}</div>
+            `
+              )
+              .join("")}
+          </div>
+          <span class="participant-count">${run.participants}/${
+        run.maxParticipants
+      }</span>
+        </div>
+        <button class="btn btn-primary">Rejoindre</button>
+      </div>
+    </div>
+  `
+    )
+    .join("");
+
+  container.innerHTML = html;
+}
+
+// Mobile menu toggle
+function initMobileMenu() {
+  const toggle = document.getElementById("menuToggle");
+  const nav = document.getElementById("mobileNav");
+
+  toggle.addEventListener("click", () => {
+    nav.classList.toggle("active");
+  });
+
+  // Close menu when clicking a link
+  nav.querySelectorAll("a").forEach((link) => {
+    link.addEventListener("click", () => {
+      nav.classList.remove("active");
+    });
+  });
+}
+
+// Smooth scroll for navigation links
+function initSmoothScroll() {
+  document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
+    anchor.addEventListener("click", function (e) {
+      e.preventDefault();
+      const target = document.querySelector(this.getAttribute("href"));
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+  });
+}
+
+// Initialize everything when DOM is ready
+document.addEventListener("DOMContentLoaded", () => {
+  initMap();
+  renderLocationList();
+  renderRuns();
+  initMobileMenu();
+  initSmoothScroll();
+});
