@@ -3,35 +3,78 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>RunTogether - Courir au Maroc</title>
+    <title>RunTogether Pro | Gérez votre temps</title>
     <link rel="stylesheet" href="style.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap"
+      rel="stylesheet"
+    />
   </head>
-  <body>
-    <header>
-      <h1>RunTogether 🏃‍♂️</h1>
-      <p>Rejoignez la communauté des coureurs du Maroc.</p>
-    </header>
+  <body class="light-theme">
+    <nav class="navbar">
+      <div class="logo">RunTogether 🏃‍♂️</div>
+      <div class="search-bar">
+        <input
+          type="text"
+          id="searchCity"
+          placeholder="Chercher une ville..."
+        />
+      </div>
+      <button id="themeToggle" class="btn-icon">🌙</button>
+    </nav>
 
-    <main>
-      <section class="card">
-        <h2>Inscription</h2>
-        <form id="registerForm">
-          <input type="text" id="nom" placeholder="Nom complet" required />
-          <input type="email" id="email" placeholder="Email" required />
-          <select id="niveau">
-            <option value="Débutant">Débutant</option>
-            <option value="Expert">Expert</option>
-          </select>
-          <button type="submit">S'inscrire</button>
+    <main class="container">
+      <section class="time-management">
+        <h2>⏱️ Optimisez votre planning</h2>
+        <div class="filter-group">
+          <button class="filter-btn active" data-filter="all">
+            Tous les runs
+          </button>
+          <button class="filter-btn" data-filter="today">Aujourd'hui</button>
+          <button class="filter-btn" data-filter="weekend">Ce week-end</button>
+        </div>
+      </section>
+
+      <section id="create" class="glass-morphism">
+        <h3>Planifier une nouvelle session</h3>
+        <form id="eventForm">
+          <div class="row">
+            <input
+              type="text"
+              id="title"
+              placeholder="Nom de la session"
+              required
+            />
+            <select id="city">
+              <option value="Casablanca">Casablanca</option>
+              <option value="Rabat">Rabat</option>
+              <option value="Marrakech">Marrakech</option>
+            </select>
+          </div>
+          <div class="row">
+            <input type="datetime-local" id="date" required />
+            <input
+              type="number"
+              id="distance"
+              placeholder="Distance (km)"
+              required
+            />
+          </div>
+          <button type="submit" class="btn-gradient">
+            Publier l'événement
+          </button>
         </form>
-        <p id="msg"></p>
       </section>
 
-      <section id="run-list">
-        <h2>Prochaines Sessions</h2>
-      </section>
+      <section id="eventGrid" class="posts-grid"></section>
     </main>
 
-    <script src="app.js"></script>
+    <footer class="pro-footer">
+      <div class="footer-bottom">
+        <p>&copy; 2026 RunTogether - Développé pour la performance</p>
+      </div>
+    </footer>
+
+    <script src="script.js"></script>
   </body>
 </html>

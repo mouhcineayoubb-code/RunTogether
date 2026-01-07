@@ -1,48 +1,51 @@
-// 1. Gestion de l'inscription via FETCH
-document
-  .getElementById("registerForm")
-  .addEventListener("submit", async (e) => {
-    e.preventDefault();
+const eventGrid = document.getElementById("eventGrid");
 
-    const data = {
-      nom: document.getElementById("nom").value,
-      email: document.getElementById("email").value,
-      niveau: document.getElementById("niveau").value,
-    };
+// 1. Fonction pour charger les événements (Postes)
+async function loadEvents() {
+  try {
+    const response = await fetch("http://localhost:3000/api/runs");
+    const runs = await response.json();
 
-    try {
-      // Le lien vers le backend Node.js que nous ferons après
-      const response = await fetch("http://localhost:3000/api/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
+    eventGrid.innerHTML = runs
+      .map(
+        (run) => `
+            <div class="event-card">
+                <h3>${run.titre}</h3>
+                <p>📍 ${run.lieu_depart}, ${run.ville}</p>
+                <p>🏁 <strong>${run.distance_km} km</strong></p>
+                <span class="badge">${run.niveau_requis}</span>
+            </div>
+        `
+      )
+      .join("");
+  } catch (err) {
+    console.error("Erreur chargement:", err);
+  }
+}
 
-      if (response.ok) {
-        document.getElementById("msg").innerText = "Bienvenue dans l'équipe !";
-        document.getElementById("msg").style.color = "green";
-      }
-    } catch (err) {
-      document.getElementById("msg").innerText =
-        "Erreur de connexion au serveur.";
-    }
+// 2. Gestion du formulaire de création
+document.getElementById("eventForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const newRun = {
+    titre: document.getElementById("title").value,
+    ville: document.getElementById("city").value,
+    date: document.getElementById("date").value,
+    distance: document.getElementById("distance").value,
+    niveau: document.getElementById("level").value,
+  };
+
+  const response = await fetch("http://localhost:3000/api/create-run", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(newRun),
   });
 
-// 2. Exemple de données avec Géolocalisation
-const runs = [
-  { titre: "Run Corniche", ville: "Casablanca", lat: 33.595, lng: -7.666 },
-  { titre: "Forêt Maâmora", ville: "Rabat", lat: 34.013, lng: -6.712 },
-];
-
-const listContainer = document.getElementById("run-list");
-runs.forEach((run) => {
-  const card = document.createElement("div");
-  card.className = "card";
-  card.innerHTML = `
-        <h3>${run.titre}</h3>
-        <p>Ville: ${run.ville}</p>
-        <p>📍 Coordonnées: ${run.lat}, ${run.lng}</p>
-        <button onclick="alert('GPS: ${run.lat}, ${run.lng}')">Voir l'itinéraire</button>
-    `;
-  listContainer.appendChild(card);
+  if (response.ok) {
+    alert("Run publié avec succès !");
+    loadEvents(); // Rafraîchir la liste
+  }
 });
+
+loadEvents();
+// Frontend/script.js
