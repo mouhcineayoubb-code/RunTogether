@@ -1,13 +1,14 @@
 // backend/db.js
 const mysql = require("mysql2");
 
-// Configuration de la connexion
-// Note : Sur XAMPP par défaut, l'utilisateur est 'root' et il n'y a pas de mot de passe.
-const connection = mysql.createConnection({
+// Configurer la connexion à la base de données MySQL
+const pool = mysql.createPool({
   host: "localhost",
-  user: "root", // Utilisateur par défaut de XAMPP
-  password: "", // Mot de passe vide par défaut sur XAMPP
-  database: "runtogether_db", // Le nom exact de la base qu'on a créée
+  user: "root",
+  password: "", // Laissez vide si vous n'avez pas de mot de passe MySQL
+  database: "runtogether_db",
+  waitForConnections: true,
+  connectionLimit: 10,
 });
 
 // Ouvrir la connexion
@@ -21,4 +22,4 @@ connection.connect((err) => {
   );
 });
 
-module.exports = connection;
+module.exports = pool.promise();

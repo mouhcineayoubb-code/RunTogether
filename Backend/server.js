@@ -1,41 +1,100 @@
-// backend/server.js
-const http = require("http");
-const db = require("./db"); // On importe la connexion qu'on vient de créer
+const express = require("express");
+const cors = require("cors");
+const bcrypt = require("bcrypt"); // Pour sécuriser les mots de passe
+const db = require("./db");
+const app = express();
 
-const server = http.createServer((req, res) => {
-  // Configuration des headers pour autoriser le frontend à nous parler (CORS)
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Content-Type", "application/json");
+app.use(cors());
+app.use(express.json());
 
-  // Route de test : Vérifier que ça marche
-  if (req.url === "/test" && req.method === "GET") {
-    res.end(JSON.stringify({ message: "Le serveur Node.js fonctionne !" }));
-  }
+// --- AUTHENTIFICATION ---
 
-  // Route 1 : Récupérer tous les utilisateurs (pour prouver que la BDD est connectée)
-  else if (req.url === "/api/users" && req.method === "GET") {
-    const sql = "SELECT * FROM users";
-    db.query(sql, (err, results) => {
-      if (err) {
-        res.statusCode = 500;
-        res.end(JSON.stringify({ error: err.message }));
-      } else {
-        res.statusCode = 200;
-        res.end(JSON.stringify(results));
-      }
-    });
-  }
-
-  // Gestion des routes inconnues
-  else {
-    res.statusCode = 404;
-    res.end(JSON.stringify({ message: "Route non trouvée" }));
+// Inscription d'un nouveau coureur
+app.post("/api/register", async (req, res) => {
+  const { nom, email, password, niveau, ville } = req.body;
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await db.execute(
+      "INSERT INTO users (nom, email, password, niveau, ville) VALUES (?, ?, ?, ?, ?)",
+      [nom, email, hashedPassword, niveau, ville]
+    );
+    res.status(201).json({ message: "Utilisateur créé avec succès" });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ error: "Erreur lors de l'inscription ou email déjà utilisé" });
   }
 });
 
-// Lancer le serveur sur le port 3000
+// Connexion
+app.post("/api/login", async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const [users] = await db.execute("SELECT * FROM users WHERE email = ?", [
+      email,
+    ]);
+    if (users.length > 0) {
+      const validPass = await bcrypt.compare(password, users[0].password);
+      if (validPass) {
+        // On renvoie les infos de l'utilisateur (sans le mot de passe pour la sécurité)
+        const { password, ...userInfos } = users[0];
+        return res.json({ message: "Connecté", user: userInfos });
+      }
+    }
+    res.status(401).json({ error: "Email ou mot de passe incorrect" });
+  } catch (err) {
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
+// --- GESTION DES RUNS ---
+
+// Récupérer tous les runs avec le nombre de participants
+app.get("/api/runs", async (req, res) => {
+  try {
+    const query = `
+            SELECT r.*, COUNT(p.id) as nb_participants 
+            FROM runs r 
+            LEFT JOIN participations p ON r.id = p.run_id 
+            GROUP BY r.id 
+            ORDER BY r.date_course ASC`;
+    const [rows] = await db.execute(query);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Créer un nouvel événement
+app.post("/api/create-run", async (req, res) => {
+  const { titre, date, lieu, ville, distance, niveau, organisateur_id } =
+    req.body;
+  try {
+    await db.execute(
+      "INSERT INTO runs (titre, date_course, lieu_depart, ville, distance_km, niveau_requis, organisateur_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [titre, date, lieu, ville, distance, niveau, organisateur_id]
+    );
+    res.status(201).json({ message: "Run publié" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Action Rejoindre une course
+app.post("/api/join", async (req, res) => {
+  const { userId, runId } = req.body;
+  try {
+    await db.execute(
+      "INSERT INTO participations (user_id, run_id) VALUES (?, ?)",
+      [userId, runId]
+    );
+    res.json({ message: "Vous avez rejoint la course !" });
+  } catch (err) {
+    res.status(400).json({ error: "Vous êtes déjà inscrit à ce run" });
+  }
+});
+
 const PORT = 3000;
-server.listen(PORT, () => {
-  console.log(`🚀 Serveur lancé sur http://localhost:${PORT}`);
+app.listen(PORT, () => {
+  console.log(`Serveur RunTogether Pro lancé sur http://localhost:${PORT}`);
 });
