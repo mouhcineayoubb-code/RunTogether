@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RunTogether - Courir au Maroc</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>RunTogether 🏃‍♂️</h1>
+      <p>Rejoignez la communauté des coureurs du Maroc.</p>
+    </header>
+
+    <main>
+      <section class="card">
+        <h2>Inscription</h2>
+        <form id="registerForm">
+          <input type="text" id="nom" placeholder="Nom complet" required />
+          <input type="email" id="email" placeholder="Email" required />
+          <select id="niveau">
+            <option value="Débutant">Débutant</option>
+            <option value="Expert">Expert</option>
+          </select>
+          <button type="submit">S'inscrire</button>
+        </form>
+        <p id="msg"></p>
+      </section>
+
+      <section id="run-list">
+        <h2>Prochaines Sessions</h2>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
