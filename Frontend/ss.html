@@ -3,106 +3,572 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>RunTogether Pro</title>
-    <link rel="stylesheet" href="style.css" />
+    <title>RunTogether - Connectez les coureurs au Maroc</title>
+
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      /* --- VARIABLES & BASE --- */
+      :root {
+        --primary: #f97316;
+        --primary-dark: #ea580c;
+        --background: #0a0a0a;
+        --foreground: #fafafa;
+        --muted: #171717;
+        --border: #262626;
+        --radius: 0.75rem;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        font-family: "Inter", sans-serif;
+        background: var(--background);
+        color: var(--foreground);
+        line-height: 1.6;
+      }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 1.5rem;
+      }
+
+      /* --- BOUTONS --- */
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        border-radius: var(--radius);
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+        transition: 0.3s;
+        text-decoration: none;
+      }
+      .btn-primary {
+        background: var(--primary);
+        color: white;
+      }
+      .btn-primary:hover {
+        background: var(--primary-dark);
+        transform: translateY(-2px);
+      }
+      .btn-outline {
+        background: transparent;
+        border: 1px solid var(--border);
+        color: white;
+      }
+      .btn-ghost {
+        background: transparent;
+        color: #a3a3a3;
+      }
+      .btn-lg {
+        padding: 1rem 2rem;
+        font-size: 1.1rem;
+      }
+      .btn-full {
+        width: 100%;
+        margin-top: 1rem;
+      }
+
+      /* --- HEADER & NAVIGATION --- */
+      .header {
+        position: fixed;
+        top: 0;
+        width: 100%;
+        z-index: 1000;
+        background: rgba(10, 10, 10, 0.8);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--border);
+      }
+      .header-content {
+        height: 5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: white;
+        text-decoration: none;
+        font-weight: 800;
+        font-size: 1.25rem;
+      }
+      .logo-icon {
+        width: 2rem;
+        color: var(--primary);
+      }
+      .nav-desktop {
+        display: flex;
+        gap: 2rem;
+      }
+      .nav-desktop a {
+        color: #a3a3a3;
+        text-decoration: none;
+        font-weight: 500;
+        transition: 0.3s;
+      }
+      .nav-desktop a:hover {
+        color: var(--primary);
+      }
+
+      /* --- HERO SECTION --- */
+      .hero {
+        padding: 10rem 0 6rem;
+        background: linear-gradient(
+          180deg,
+          rgba(249, 115, 22, 0.1) 0%,
+          transparent 100%
+        );
+      }
+      .hero h1 {
+        font-size: 4rem;
+        font-weight: 800;
+        margin: 1.5rem 0;
+        line-height: 1.1;
+      }
+      .text-gradient {
+        background: linear-gradient(90deg, #f97316, #fbbf24);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .hero p {
+        font-size: 1.25rem;
+        color: #a3a3a3;
+        margin-bottom: 2.5rem;
+        max-width: 600px;
+      }
+      .hero-stats {
+        display: flex;
+        gap: 4rem;
+        margin-top: 3rem;
+      }
+      .stat-value {
+        display: block;
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: var(--primary);
+      }
+
+      /* --- MAP & RUNS --- */
+      .map-container {
+        display: grid;
+        grid-template-columns: 1fr 350px;
+        height: 500px;
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        overflow: hidden;
+        margin-top: 2rem;
+      }
+      #map {
+        height: 100%;
+        z-index: 1;
+      }
+      .map-sidebar {
+        background: var(--muted);
+        padding: 1.5rem;
+        overflow-y: auto;
+      }
+      .location-item {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border);
+        cursor: pointer;
+        transition: 0.3s;
+      }
+      .location-item:hover {
+        background: rgba(249, 115, 22, 0.1);
+      }
+
+      .runs-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 2rem;
+        margin-top: 2rem;
+      }
+      .run-card {
+        background: var(--muted);
+        border-radius: var(--radius);
+        padding: 2rem;
+        border: 1px solid var(--border);
+        transition: 0.3s;
+      }
+      .run-card:hover {
+        border-color: var(--primary);
+        transform: translateY(-5px);
+      }
+
+      /* --- MODALS --- */
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 2000;
+      }
+      .modal-content {
+        background: var(--muted);
+        width: 90%;
+        max-width: 450px;
+        margin: 10% auto;
+        padding: 2.5rem;
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        position: relative;
+      }
+      .form-input {
+        width: 100%;
+        padding: 0.8rem;
+        margin-bottom: 1rem;
+        background: var(--background);
+        border: 1px solid var(--border);
+        color: white;
+        border-radius: 0.5rem;
+        outline: none;
+      }
+      .close {
+        position: absolute;
+        right: 1.5rem;
+        top: 1.5rem;
+        cursor: pointer;
+        font-size: 1.5rem;
+      }
+
+      /* --- FOOTER --- */
+      .footer {
+        padding: 6rem 0 3rem;
+        background: var(--muted);
+        border-top: 1px solid var(--border);
+      }
+      .footer-content {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4rem;
+        margin-bottom: 4rem;
+      }
+      .footer-column a {
+        display: block;
+        color: #a3a3a3;
+        text-decoration: none;
+        margin-bottom: 0.5rem;
+      }
+
+      @media (max-width: 900px) {
+        .map-container {
+          grid-template-columns: 1fr;
+          height: 800px;
+        }
+        .hero h1 {
+          font-size: 3rem;
+        }
+        .nav-desktop {
+          display: none;
+        }
+      }
+    </style>
   </head>
   <body>
-    <div class="app-container">
-      <!-- Header -->
-      <header class="header">
-        <div class="header-content">
-          <h1>🏃 RunTogether Pro</h1>
-          <div class="header-actions">
-            <button id="themeToggle" class="btn-icon" title="Mode nuit">
-              🌙
+    <header class="header">
+      <div class="container header-content">
+        <a href="#" class="logo">
+          <svg
+            class="logo-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 6v6l4 2" />
+          </svg>
+          <span>RunTogether</span>
+        </a>
+        <nav class="nav-desktop">
+          <a href="#parcours">Parcours</a>
+          <a href="#courses">Courses</a>
+          <a href="#communaute">Communauté</a>
+        </nav>
+        <div class="header-actions">
+          <button class="btn btn-ghost" onclick="openModal('login')">
+            Connexion
+          </button>
+          <button class="btn btn-primary" onclick="openModal('register')">
+            Rejoindre
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div class="container">
+        <div class="hero-content">
+          <span class="hero-badge">Communauté de coureurs au Maroc</span>
+          <h1>
+            Courez ensemble,<br /><span class="text-gradient"
+              >allez plus loin</span
+            >
+          </h1>
+          <p>
+            Découvrez les meilleurs parcours de course au Maroc, rejoignez des
+            groupes locaux et organisez vos sessions en un clic.
+          </p>
+          <div class="hero-buttons">
+            <button
+              class="btn btn-primary btn-lg"
+              onclick="location.href='#parcours'"
+            >
+              Explorer la carte
             </button>
-            <button id="createEventBtn" class="btn-primary">
-              + Créer un événement
+            <button
+              class="btn btn-outline btn-lg"
+              onclick="openModal('register')"
+            >
+              S'inscrire gratuitement
             </button>
           </div>
+          <div class="hero-stats">
+            <div class="stat">
+              <span class="stat-value">2,500+</span
+              ><span class="stat-label">Coureurs</span>
+            </div>
+            <div class="stat">
+              <span class="stat-value">12</span
+              ><span class="stat-label">Villes</span>
+            </div>
+          </div>
         </div>
-      </header>
+      </div>
+    </section>
 
-      <!-- Filters -->
-      <div class="filters-section">
-        <div class="filter-group">
-          <label>🔍 Recherche</label>
+    <section class="map-section" id="parcours">
+      <div class="container">
+        <div class="section-header">
+          <h2>Explorez les parcours</h2>
+          <p>
+            Les meilleurs endroits pour courir à Casablanca, Rabat et Marrakech.
+          </p>
+        </div>
+        <div class="map-container">
+          <div id="map"></div>
+          <div class="map-sidebar">
+            <h3>Lieux populaires</h3>
+            <div id="locationList" class="location-list"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="runs-section" id="courses">
+      <div class="container">
+        <div class="section-header">
+          <h2>Courses à venir</h2>
+          <p>Rejoignez les sessions de la communauté marocaine.</p>
+        </div>
+        <div id="runsGrid" class="runs-grid"></div>
+      </div>
+    </section>
+
+    <div id="authModal" class="modal">
+      <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h2 id="modalTitle" style="margin-bottom: 1.5rem">Connexion</h2>
+        <form id="authForm">
+          <div id="regFields" style="display: none">
+            <input
+              type="text"
+              id="regNom"
+              placeholder="Nom Complet"
+              class="form-input"
+            />
+            <select id="regVille" class="form-input">
+              <option value="Casablanca">Casablanca</option>
+              <option value="Rabat">Rabat</option>
+              <option value="Marrakech">Marrakech</option>
+            </select>
+          </div>
           <input
-            type="text"
-            id="searchInput"
-            placeholder="Rechercher un événement..."
+            type="email"
+            id="authEmail"
+            placeholder="Email"
+            class="form-input"
+            required
           />
-        </div>
-        <div class="filter-group">
-          <label>📍 Distance</label>
-          <select id="distanceFilter">
-            <option value="all">Toutes distances</option>
-            <option value="5">5 km</option>
-            <option value="10">10 km</option>
-            <option value="21">Semi-marathon</option>
-            <option value="42">Marathon</option>
-          </select>
-        </div>
-        <div class="filter-group">
-          <label>📅 Date</label>
-          <select id="dateFilter">
-            <option value="all">Toutes dates</option>
-            <option value="today">Aujourd'hui</option>
-            <option value="week">Cette semaine</option>
-            <option value="month">Ce mois</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Events List -->
-      <div class="events-container" id="eventsContainer">
-        <!-- Events will be rendered here -->
-      </div>
-
-      <!-- Modal for creating events -->
-      <div id="createEventModal" class="modal">
-        <div class="modal-content">
-          <span class="close">&times;</span>
-          <h2>Créer un nouvel événement</h2>
-          <form id="createEventForm">
-            <div class="form-group">
-              <label>Nom de l'événement *</label>
-              <input type="text" id="eventName" required />
-            </div>
-            <div class="form-group">
-              <label>Distance (km) *</label>
-              <input type="number" id="eventDistance" min="1" required />
-            </div>
-            <div class="form-group">
-              <label>Date *</label>
-              <input type="date" id="eventDate" required />
-            </div>
-            <div class="form-group">
-              <label>Heure *</label>
-              <input type="time" id="eventTime" required />
-            </div>
-            <div class="form-group">
-              <label>Lieu *</label>
-              <input type="text" id="eventLocation" required />
-            </div>
-            <div class="form-group">
-              <label>Niveau</label>
-              <select id="eventLevel">
-                <option value="débutant">Débutant</option>
-                <option value="intermédiaire">Intermédiaire</option>
-                <option value="avancé">Avancé</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Description</label>
-              <textarea id="eventDescription" rows="3"></textarea>
-            </div>
-            <button type="submit" class="btn-primary btn-full">
-              Créer l'événement
-            </button>
-          </form>
-        </div>
+          <input
+            type="password"
+            id="authPassword"
+            placeholder="Mot de passe"
+            class="form-input"
+            required
+          />
+          <button type="submit" class="btn btn-primary btn-full">
+            Confirmer
+          </button>
+        </form>
       </div>
     </div>
+
+    <footer class="footer">
+      <div class="container">
+        <div class="footer-content">
+          <div class="footer-brand">
+            <div class="logo">RunTogether</div>
+            <p>Le sport communautaire au Maroc depuis 2024.</p>
+          </div>
+          <div class="footer-links">
+            <div class="footer-column">
+              <h4>Plateforme</h4>
+              <a href="#parcours">Carte</a><a href="#courses">Runs</a>
+            </div>
+            <div class="footer-column">
+              <h4>Légal</h4>
+              <a href="#">Confidentialité</a><a href="#">Conditions</a>
+            </div>
+          </div>
+        </div>
+        <div
+          style="
+            text-align: center;
+            border-top: 1px solid var(--border);
+            padding-top: 2rem;
+          "
+        >
+          <p>&copy; 2026 RunTogether Pro.</p>
+        </div>
+      </div>
+    </footer>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+      // 1. DONNÉES DE DÉMONSTRATION
+      const locations = [
+        {
+          id: 1,
+          name: "Corniche Casablanca",
+          city: "Casablanca",
+          coords: [33.595, -7.666],
+          dist: "10km",
+        },
+        {
+          id: 2,
+          name: "Forêt Maâmora",
+          city: "Rabat",
+          coords: [34.013, -6.712],
+          dist: "12km",
+        },
+        {
+          id: 3,
+          name: "Ménara Marrakech",
+          city: "Marrakech",
+          coords: [31.622, -8.022],
+          dist: "5km",
+        },
+      ];
+
+      const runs = [
+        {
+          title: "Morning Run Casa",
+          loc: "Phare d'El Hank",
+          date: "25 Jan",
+          dist: "10km",
+          level: "intermediaire",
+        },
+        {
+          title: "Trail Forêt Hilton",
+          loc: "Rabat",
+          date: "26 Jan",
+          dist: "15km",
+          level: "expert",
+        },
+        {
+          title: "Jogging Palmeraie",
+          loc: "Marrakech",
+          date: "25 Jan",
+          dist: "5km",
+          level: "debutant",
+        },
+      ];
+
+      // 2. INITIALISATION DE LA CARTE LEAFLET
+      let map = L.map("map").setView([33.5731, -7.5898], 6);
+      L.tileLayer(
+        "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+      ).addTo(map);
+
+      locations.forEach((loc) => {
+        L.circleMarker(loc.coords, {
+          color: "#f97316",
+          radius: 8,
+          fillOpacity: 0.8,
+        })
+          .addTo(map)
+          .bindPopup(`<b>${loc.name}</b><br>${loc.city}`);
+      });
+
+      // 3. AFFICHAGE DYNAMIQUE
+      document.getElementById("locationList").innerHTML = locations
+        .map(
+          (loc) => `
+          <div class="location-item" onclick="map.flyTo([${loc.coords}], 14, {duration: 1.5})">
+              <h4 style="color: var(--primary)">${loc.name}</h4>
+              <small>${loc.city} • ${loc.dist}</small>
+          </div>
+      `
+        )
+        .join("");
+
+      document.getElementById("runsGrid").innerHTML = runs
+        .map(
+          (run) => `
+          <div class="run-card">
+              <span class="btn-ghost" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; border: 1px solid var(--border)">${run.level.toUpperCase()}</span>
+              <h3 style="margin: 1rem 0">${run.title}</h3>
+              <p>📍 ${run.loc}</p>
+              <p>📅 ${run.date} • 🏁 ${run.dist}</p>
+              <button class="btn btn-primary btn-full" onclick="alert('Demande envoyée au serveur Node.js !')">Rejoindre</button>
+          </div>
+      `
+        )
+        .join("");
+
+      // 4. GESTION DES MODALS
+      function openModal(type) {
+        document.getElementById("authModal").style.display = "block";
+        if (type === "register") {
+          document.getElementById("modalTitle").innerText = "Créer un compte";
+          document.getElementById("regFields").style.display = "block";
+        } else {
+          document.getElementById("modalTitle").innerText = "Connexion";
+          document.getElementById("regFields").style.display = "none";
+        }
+      }
+
+      function closeModal() {
+        document.getElementById("authModal").style.display = "none";
+      }
+      window.onclick = (e) => {
+        if (e.target.className === "modal") closeModal();
+      };
+    </script>
   </body>
 </html>

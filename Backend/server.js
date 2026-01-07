@@ -1,100 +1,80 @@
 const express = require("express");
+const passport = require("passport");
+const GoogleStrategy = require("passport-google-oauth20").Strategy;
+const session = require("express-session");
 const cors = require("cors");
-const bcrypt = require("bcrypt"); // Pour sécuriser les mots de passe
-const db = require("./db");
+const db = require("./db"); // Import de votre connexion MySQL
+
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-// --- AUTHENTIFICATION ---
+// 1. Configuration de la session
+app.use(
+  session({
+    secret: "runtogether_secret_key",
+    resave: false,
+    saveUninitialized: true,
+  })
+);
+app.use(passport.initialize());
+app.use(passport.session());
 
-// Inscription d'un nouveau coureur
-app.post("/api/register", async (req, res) => {
-  const { nom, email, password, niveau, ville } = req.body;
-  try {
-    const hashedPassword = await bcrypt.hash(password, 10);
-    await db.execute(
-      "INSERT INTO users (nom, email, password, niveau, ville) VALUES (?, ?, ?, ?, ?)",
-      [nom, email, hashedPassword, niveau, ville]
-    );
-    res.status(201).json({ message: "Utilisateur créé avec succès" });
-  } catch (err) {
-    res
-      .status(500)
-      .json({ error: "Erreur lors de l'inscription ou email déjà utilisé" });
-  }
-});
+// 2. Stratégie Google Passport
+passport.use(
+  new GoogleStrategy(
+    {
+      clientID:
+        "122510118172-qc3819qjlv6q30a22efisqr8qj4dvg2g.apps.googleusercontent.com",
+      clientSecret: "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",
+      callbackURL: "http://localhost:3000/auth/google/callback",
+    },
+    async (accessToken, refreshToken, profile, done) => {
+      const email = profile.emails[0].value;
+      try {
+        // Vérifier si l'utilisateur existe dans votre table 'users'
+        let [rows] = await db.execute("SELECT * FROM users WHERE email = ?", [
+          email,
+        ]);
 
-// Connexion
-app.post("/api/login", async (req, res) => {
-  const { email, password } = req.body;
-  try {
-    const [users] = await db.execute("SELECT * FROM users WHERE email = ?", [
-      email,
-    ]);
-    if (users.length > 0) {
-      const validPass = await bcrypt.compare(password, users[0].password);
-      if (validPass) {
-        // On renvoie les infos de l'utilisateur (sans le mot de passe pour la sécurité)
-        const { password, ...userInfos } = users[0];
-        return res.json({ message: "Connecté", user: userInfos });
+        if (rows.length === 0) {
+          // Création automatique si nouveau (Droit au but pour RunTogether)
+          await db.execute(
+            "INSERT INTO users (nom, email, ville) VALUES (?, ?, ?)",
+            [profile.displayName, email, "Casablanca"]
+          );
+          [rows] = await db.execute("SELECT * FROM users WHERE email = ?", [
+            email,
+          ]);
+        }
+        return done(null, rows[0]);
+      } catch (err) {
+        return done(err);
       }
     }
-    res.status(401).json({ error: "Email ou mot de passe incorrect" });
-  } catch (err) {
-    res.status(500).json({ error: "Erreur serveur" });
+  )
+);
+
+passport.serializeUser((user, done) => done(null, user));
+passport.deserializeUser((user, done) => done(null, user));
+
+// 3. Routes d'authentification
+app.get(
+  "/auth/google",
+  passport.authenticate("google", { scope: ["profile", "email"] })
+);
+
+app.get(
+  "/auth/google/callback",
+  passport.authenticate("google", { failureRedirect: "/login" }),
+  (req, res) => {
+    res.redirect("http://localhost:5500/Frontend/index.html");
   }
-});
+);
 
-// --- GESTION DES RUNS ---
+app.get("/api/current_user", (req, res) => res.send(req.user));
 
-// Récupérer tous les runs avec le nombre de participants
-app.get("/api/runs", async (req, res) => {
-  try {
-    const query = `
-            SELECT r.*, COUNT(p.id) as nb_participants 
-            FROM runs r 
-            LEFT JOIN participations p ON r.id = p.run_id 
-            GROUP BY r.id 
-            ORDER BY r.date_course ASC`;
-    const [rows] = await db.execute(query);
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Créer un nouvel événement
-app.post("/api/create-run", async (req, res) => {
-  const { titre, date, lieu, ville, distance, niveau, organisateur_id } =
-    req.body;
-  try {
-    await db.execute(
-      "INSERT INTO runs (titre, date_course, lieu_depart, ville, distance_km, niveau_requis, organisateur_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      [titre, date, lieu, ville, distance, niveau, organisateur_id]
-    );
-    res.status(201).json({ message: "Run publié" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Action Rejoindre une course
-app.post("/api/join", async (req, res) => {
-  const { userId, runId } = req.body;
-  try {
-    await db.execute(
-      "INSERT INTO participations (user_id, run_id) VALUES (?, ?)",
-      [userId, runId]
-    );
-    res.json({ message: "Vous avez rejoint la course !" });
-  } catch (err) {
-    res.status(400).json({ error: "Vous êtes déjà inscrit à ce run" });
-  }
-});
-
-const PORT = 3000;
-app.listen(PORT, () => {
-  console.log(`Serveur RunTogether Pro lancé sur http://localhost:${PORT}`);
-});
+app.listen(3000, () =>
+  console.log("Backend RunTogether Google Auth sur port 3000")
+);

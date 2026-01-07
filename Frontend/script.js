@@ -321,6 +321,67 @@ function initSmoothScroll() {
     });
   });
 }
+// 1. Charger les runs depuis la base de données
+async function loadRealTimeRuns() {
+  const container = document.getElementById("dynamic-posts");
+  try {
+    const response = await fetch("http://localhost:3000/api/runs");
+    const runs = await response.json();
+
+    container.innerHTML = runs
+      .map(
+        (run) => `
+            <div class="event-card">
+                <div class="card-header">
+                    <h3>${run.titre}</h3>
+                    <span class="badge">${run.niveau_requis}</span>
+                </div>
+                <p>📍 ${run.lieu_depart}, ${run.ville}</p>
+                <p>⏱️ ${new Date(run.date_course).toLocaleString("fr-FR")}</p>
+                <div class="card-footer">
+                    <span>👥 ${run.nb_participants || 0} participants</span>
+                    <button onclick="joinRun(${
+                      run.id
+                    })" class="btn-join">Rejoindre</button>
+                </div>
+            </div>
+        `
+      )
+      .join("");
+  } catch (err) {
+    container.innerHTML = "<p>Erreur de chargement des sessions.</p>";
+  }
+}
+
+// 2. Gérer la session utilisateur (Authentification)
+function checkAuth() {
+  const user = JSON.parse(localStorage.getItem("user"));
+  const authControls = document.getElementById("auth-status");
+
+  if (user) {
+    authControls.innerHTML = `
+            <span>Bienvenue, ${user.nom}</span>
+            <button onclick="logout()" class="btn-ghost">Déconnexion</button>
+        `;
+  }
+}
+
+// 3. Action : Rejoindre (Action DB)
+async function joinRun(runId) {
+  const user = JSON.parse(localStorage.getItem("user"));
+  if (!user) return alert("Connectez-vous pour participer !");
+
+  const res = await fetch("http://localhost:3000/api/join", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId: user.id, runId: runId }),
+  });
+
+  if (res.ok) {
+    alert("Inscription confirmée !");
+    loadRealTimeRuns(); // Rafraîchit le compteur de participants
+  }
+}
 
 // Initialize everything when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
