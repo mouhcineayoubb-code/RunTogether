@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RunTogether - Connectez les coureurs au Maroc</title>
+
+    <link rel="stylesheet" href="s1.css" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <header class="header">
+      <div class="container header-content">
+        <a href="#" class="logo">
+          <svg
+            class="logo-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 6v6l4 2" />
+          </svg>
+          <span>RunTogether</span>
+        </a>
+        <nav class="nav-desktop">
+          <a href="#parcours">Parcours</a>
+          <a href="#courses">Courses</a>
+          <a href="#communaute">Communauté</a>
+        </nav>
+        <div class="header-actions">
+          <button class="btn btn-ghost">Connexion</button>
+          <button class="btn btn-primary">Rejoindre</button>
+        </div>
+        <button class="menu-toggle" id="menuToggle">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <nav class="nav-mobile" id="mobileNav">
+        <a href="#parcours">Parcours</a>
+        <a href="#courses">Courses</a>
+        <a href="#communaute">Communauté</a>
+        <div class="mobile-actions">
+          <button class="btn btn-ghost">Connexion</button>
+          <button class="btn btn-primary">Rejoindre</button>
+        </div>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <div class="container">
+        <div class="hero-content">
+          <span class="hero-badge">Communauté de coureurs au Maroc</span>
+          <h1>
+            Courez ensemble,<br /><span class="text-gradient"
+              >allez plus loin</span
+            >
+          </h1>
+          <p>
+            Découvrez les meilleurs parcours de course au Maroc, rejoignez des
+            groupes de coureurs près de chez vous et participez à des événements
+            locaux.
+          </p>
+          <div class="hero-buttons">
+            <button
+              class="btn btn-primary btn-lg"
+              onclick="location.href='#parcours'"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                width="20"
+                height="20"
+              >
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+              Explorer la carte
+            </button>
+            <button class="btn btn-outline btn-lg">En savoir plus</button>
+          </div>
+          <div class="hero-stats">
+            <div class="stat">
+              <span class="stat-value">2,500+</span
+              ><span class="stat-label">Coureurs actifs</span>
+            </div>
+            <div class="stat">
+              <span class="stat-value">45</span
+              ><span class="stat-label">Parcours</span>
+            </div>
+            <div class="stat">
+              <span class="stat-value">12</span
+              ><span class="stat-label">Villes</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="map-section" id="parcours">
+      <div class="container">
+        <div class="section-header">
+          <h2>Explorez les parcours</h2>
+          <p>Découvrez les meilleurs endroits pour courir à travers le Maroc</p>
+        </div>
+        <div class="map-container">
+          <div id="map"></div>
+          <div class="map-sidebar">
+            <h3>Lieux populaires</h3>
+            <div class="location-list" id="locationList"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="runs-section" id="courses">
+      <div class="container">
+        <div class="section-header">
+          <h2>Courses à venir</h2>
+          <p>Rejoignez les prochaines courses organisées par la communauté</p>
+        </div>
+        <div class="runs-grid" id="runsGrid"></div>
+      </div>
+    </section>
+
+    <section class="features-section" id="communaute">
+      <div class="container">
+        <div class="section-header">
+          <h2>Pourquoi RunTogether ?</h2>
+          <p>Une plateforme conçue pour les coureurs marocains</p>
+        </div>
+        <div class="features-grid">
+          <div class="feature-card">
+            <div class="feature-icon">🏃</div>
+            <h3>Communauté locale</h3>
+            <p>
+              Connectez-vous avec des coureurs de votre ville et créez des liens
+              durables.
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">📍</div>
+            <h3>Parcours vérifiés</h3>
+            <p>
+              Des parcours testés et approuvés par la communauté avec toutes les
+              infos utiles.
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">📅</div>
+            <h3>Événements réguliers</h3>
+            <p>
+              Participez à des courses hebdomadaires et des événements spéciaux.
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">📈</div>
+            <h3>Tous niveaux</h3>
+            <p>
+              Du débutant à l'expert, trouvez des parcours adaptés à votre
+              niveau.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta-section">
+      <div class="container">
+        <div class="cta-content">
+          <h2>Prêt à courir ?</h2>
+          <p>
+            Rejoignez la communauté RunTogether et découvrez le plaisir de
+            courir ensemble.
+          </p>
+          <button class="btn btn-primary btn-lg">
+            Créer mon compte gratuitement
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div class="container">
+        <div class="footer-content">
+          <div class="footer-brand">
+            <a href="#" class="logo">
+              <span>RunTogether</span>
+            </a>
+            <p>Connecter les coureurs au Maroc depuis 2024.</p>
+          </div>
+          <div class="footer-links">
+            <div class="footer-column">
+              <h4>Plateforme</h4>
+              <a href="#parcours">Parcours</a>
+              <a href="#courses">Courses</a>
+            </div>
+            <div class="footer-column">
+              <h4>Support</h4>
+              <a href="#">Contact</a>
+              <a href="#">FAQ</a>
+            </div>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <p>&copy; 2026 RunTogether. Tous droits réservés.</p>
+        </div>
+      </div>
+    </footer>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="s1.js"></script>
+  </body>
+</html>
