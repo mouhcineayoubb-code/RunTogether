@@ -147,6 +147,93 @@
     <section class="features-section" id="communaute">
       <div class="container">
         <div class="section-header">
+          <div
+            class="main-layout"
+            style="display: grid; grid-template-columns: 1fr 350px; gap: 20px"
+          >
+            <div class="left-side">
+              <div id="map" style="height: 450px; border-radius: 12px"></div>
+
+              <div
+                class="comment-section"
+                style="
+                  margin-top: 20px;
+                  background: #171717;
+                  padding: 20px;
+                  border-radius: 12px;
+                "
+              >
+                <h3>Commentaires sur le parcours</h3>
+                <div
+                  id="comments-display"
+                  style="
+                    max-height: 200px;
+                    overflow-y: auto;
+                    margin-bottom: 15px;
+                  "
+                ></div>
+                <div style="display: flex; gap: 10px">
+                  <input
+                    type="text"
+                    id="new-comment"
+                    placeholder="Teb chi haja..."
+                    style="
+                      flex: 1;
+                      padding: 10px;
+                      border-radius: 8px;
+                      border: 1px solid #262626;
+                      background: #0a0a0a;
+                      color: white;
+                    "
+                  />
+                  <button onclick="sendComment()" class="btn btn-primary">
+                    Sift
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <aside
+              class="chat-sidebar"
+              style="
+                background: #171717;
+                border-radius: 12px;
+                display: flex;
+                flex-direction: column;
+                height: 670px;
+              "
+            >
+              <div style="padding: 15px; border-bottom: 1px solid #262626">
+                <h3>Messagerie</h3>
+              </div>
+              <div
+                id="chat-messages"
+                style="
+                  flex: 1;
+                  padding: 15px;
+                  overflow-y: auto;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 10px;
+                "
+              ></div>
+              <div style="padding: 15px; border-top: 1px solid #262626">
+                <input
+                  type="text"
+                  id="chat-input"
+                  placeholder="Dwi m3a s7abk..."
+                  style="
+                    width: 100%;
+                    padding: 10px;
+                    border-radius: 8px;
+                    border: none;
+                    background: #262626;
+                    color: white;
+                  "
+                />
+              </div>
+            </aside>
+          </div>
           <h2>Pourquoi RunTogether ?</h2>
           <p>Une plateforme conçue pour les coureurs marocains</p>
         </div>

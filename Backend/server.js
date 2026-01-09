@@ -27,7 +27,75 @@ app.use(
 );
 app.use(passport.initialize());
 app.use(passport.session());
+// Posti commentaire jdid f event
+app.post('/api/comments', async (req, res) => {
+    const { runId, userId, contenu } = req.body;
+    await db.execute("INSERT INTO comments (run_id, user_id, contenu) VALUES (?, ?, ?)", 
+    [runId, userId, contenu]);
+    res.send("Commentaire ajouté");
+});
 
+// Sift message private l-sa7bk
+app.post('/api/messages', async (req, res) => {
+    const { senderId, receiverId, message } = req.body;
+    await db.execute("INSERT INTO private_messages (sender_id, receiver_id, message) VALUES (?, ?, ?)", 
+    [senderId, receiverId, message]);
+    res.send("Message envoyé");
+});
+// 1. Route bach t-sift commentaire jdid
+app.post('/api/comments', async (req, res) => {
+    const { runId, userId, contenu } = req.body;
+    try {
+        await db.execute("INSERT INTO comments (run_id, user_id, contenu) VALUES (?, ?, ?)", 
+        [runId, userId, contenu]);
+        res.status(201).json({ message: "Commentaire t-sift!" });
+    } catch (err) { res.status(500).json(err); }
+});
+
+// 2. Route bach t-qra l-commentaires dyal wahed l-run
+app.get('/api/runs/:id/comments', async (req, res) => {
+    const [rows] = await db.execute(`
+        SELECT c.*, u.nom FROM comments c 
+        JOIN users u ON c.user_id = u.id 
+        WHERE c.run_id = ? ORDER BY c.date_publication DESC`, [req.params.id]);
+    res.json(rows);
+});
+// Fonction bach t-sift commentaire
+async function sendComment() {
+    const text = document.getElementById('new-comment').value;
+    const user = JSON.parse(localStorage.getItem('user')); // User dakhhel mn Gmail
+    
+    if (!text || !user) return alert("Khsek t-connecta auwel!");
+
+    await fetch('http://localhost:3000/api/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ runId: currentRunId, userId: user.id, contenu: text })
+    });
+    
+    document.getElementById('new-comment').value = '';
+    loadComments(currentRunId);
+}
+
+// Fonction bach t-qra l-commentaires
+async function loadComments(id) {
+    const res = await fetch(`http://localhost:3000/api/runs/${id}/comments`);
+    const data = await res.json();
+    const display = document.getElementById('comments-display');
+    display.innerHTML = data.map(c => `
+        <div style="margin-bottom: 10px; border-bottom: 1px solid #262626; padding-bottom: 5px;">
+            <b style="color: var(--primary);">${c.nom}</b>: <span>${c.contenu}</span>
+        </div>
+    `).join('');
+}
+
+// 3. Route dyal l-Chat (Messages private)
+app.post('/api/messages', async (req, res) => {
+    const { senderId, receiverId, message } = req.body;
+    await db.execute("INSERT INTO private_messages (sender_id, receiver_id, message) VALUES (?, ?, ?)", 
+    [senderId, receiverId, message]);
+    res.send("Message envoyé");
+});
 // 2. Stratégie Google Passport
 passport.use(
   new GoogleStrategy(
