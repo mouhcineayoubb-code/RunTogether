@@ -10,10 +10,10 @@ CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nom VARCHAR(100) NOT NULL,
     email VARCHAR(150) NOT NULL UNIQUE,
-    password VARCHAR(255) NULL, -- Nullable 3la 9bel l-auth dyal Gmail
-    age INT, -- L-3mer
-    ville_actuelle VARCHAR(100), -- Fin sakine daba
-    lieu_naissance VARCHAR(100), -- Fin tzaditi
+    password VARCHAR(255) NULL,
+    age INT, 
+    ville_actuelle VARCHAR(100), 
+    lieu_naissance VARCHAR(100), 
     niveau ENUM('Débutant', 'Intermédiaire', 'Expert') DEFAULT 'Débutant',
     photo_url VARCHAR(255) DEFAULT 'default_avatar.png',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
