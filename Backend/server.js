@@ -81,3 +81,23 @@ app.get("/api/runs/:id/comments", async (req, res) => {
 });
 
 app.listen(3000, () => console.log("Server khdam f port 3000"));
+// Route bach t-creyi "Run" jdid
+app.post("/api/runs", async (req, res) => {
+  const {
+    titre,
+    description,
+    date_course,
+    ville,
+    distance_km,
+    organisateur_id,
+  } = req.body;
+  try {
+    await db.execute(
+      "INSERT INTO runs (titre, description, date_course, ville, distance_km, organisateur_id) VALUES (?, ?, ?, ?, ?, ?)",
+      [titre, description, date_course, ville, distance_km, organisateur_id]
+    );
+    res.status(201).json({ message: "Course t-creyat!" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
