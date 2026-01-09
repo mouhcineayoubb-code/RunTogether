@@ -9,7 +9,14 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+require('dotenv').config(); // Had l-ster kiy-jib l-asrar mn .env
 
+// Blat mat-ktb l-secret dyalk b l-iddin f l-code:
+passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL: "/auth/google/callback"
+}, ... ));
 // 1. Configuration de la session
 app.use(
   session({
