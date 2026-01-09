@@ -382,7 +382,54 @@ async function joinRun(runId) {
     loadRealTimeRuns(); // Rafraîchit le compteur de participants
   }
 }
+// Fonction bach t-sift commentaire l-server
+async function sendComment(currentRunId) {
+  const textInput = document.getElementById("new-comment");
+  const text = textInput.value;
+  const user = JSON.parse(localStorage.getItem("user"));
 
+  if (!text || !user) return alert("Khsek t-connecta auwel!");
+
+  try {
+    const res = await fetch("http://localhost:3000/api/comments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        runId: currentRunId,
+        userId: user.id,
+        contenu: text,
+      }),
+    });
+
+    if (res.ok) {
+      textInput.value = "";
+      loadComments(currentRunId); // Recharger l-lista
+    }
+  } catch (err) {
+    console.error("Mouchkil f fetch:", err);
+  }
+}
+
+// Fonction bach t-qra l-commentaires mn l-server
+async function loadComments(id) {
+  try {
+    const res = await fetch(`http://localhost:3000/api/runs/${id}/comments`);
+    const data = await res.json();
+    const display = document.getElementById("comments-display");
+
+    display.innerHTML = data
+      .map(
+        (c) => `
+            <div style="margin-bottom: 10px; border-bottom: 1px solid #262626; padding-bottom: 5px;">
+                <b style="color: #f97316;">${c.nom}</b>: <span>${c.contenu}</span>
+            </div>
+        `
+      )
+      .join("");
+  } catch (err) {
+    console.error("Erreur de chargement:", err);
+  }
+}
 // Initialize everything when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
   initMap();
