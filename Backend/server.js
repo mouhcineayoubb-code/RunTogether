@@ -1,100 +1,103 @@
+require("dotenv").config(); // Darori hiya l-lowla
 const express = require("express");
+const passport = require("passport");
+const GoogleStrategy = require("passport-google-oauth20").Strategy;
+const session = require("express-session");
 const cors = require("cors");
-const bcrypt = require("bcrypt"); // Pour sécuriser les mots de passe
 const db = require("./db");
-const app = express();
 
+const app = express();
 app.use(cors());
 app.use(express.json());
 
-// --- AUTHENTIFICATION ---
+app.use(
+  session({ secret: "runtogether_key", resave: false, saveUninitialized: true })
+);
+app.use(passport.initialize());
+app.use(passport.session());
 
-// Inscription d'un nouveau coureur
-app.post("/api/register", async (req, res) => {
-  const { nom, email, password, niveau, ville } = req.body;
-  try {
-    const hashedPassword = await bcrypt.hash(password, 10);
-    await db.execute(
-      "INSERT INTO users (nom, email, password, niveau, ville) VALUES (?, ?, ?, ?, ?)",
-      [nom, email, hashedPassword, niveau, ville]
-    );
-    res.status(201).json({ message: "Utilisateur créé avec succès" });
-  } catch (err) {
-    res
-      .status(500)
-      .json({ error: "Erreur lors de l'inscription ou email déjà utilisé" });
-  }
-});
-
-// Connexion
-app.post("/api/login", async (req, res) => {
-  const { email, password } = req.body;
-  try {
-    const [users] = await db.execute("SELECT * FROM users WHERE email = ?", [
-      email,
-    ]);
-    if (users.length > 0) {
-      const validPass = await bcrypt.compare(password, users[0].password);
-      if (validPass) {
-        // On renvoie les infos de l'utilisateur (sans le mot de passe pour la sécurité)
-        const { password, ...userInfos } = users[0];
-        return res.json({ message: "Connecté", user: userInfos });
+// Configuration Passport b l-.env
+passport.use(
+  new GoogleStrategy(
+    {
+      clientID: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      callbackURL: "http://localhost:3000/auth/google/callback",
+    },
+    async (accessToken, refreshToken, profile, done) => {
+      const email = profile.emails[0].value;
+      try {
+        let [rows] = await db.execute("SELECT * FROM users WHERE email = ?", [
+          email,
+        ]);
+        if (rows.length === 0) {
+          await db.execute("INSERT INTO users (nom, email) VALUES (?, ?)", [
+            profile.displayName,
+            email,
+          ]);
+          [rows] = await db.execute("SELECT * FROM users WHERE email = ?", [
+            email,
+          ]);
+        }
+        return done(null, rows[0]);
+      } catch (err) {
+        return done(err);
       }
     }
-    res.status(401).json({ error: "Email ou mot de passe incorrect" });
-  } catch (err) {
-    res.status(500).json({ error: "Erreur serveur" });
+  )
+);
+
+passport.serializeUser((u, d) => d(null, u));
+passport.deserializeUser((u, d) => d(null, u));
+
+// ROUTES
+app.get(
+  "/auth/google",
+  passport.authenticate("google", { scope: ["profile", "email"] })
+);
+app.get(
+  "/auth/google/callback",
+  passport.authenticate("google"),
+  (req, res) => {
+    res.redirect("http://localhost:5500/Frontend/index.html");
   }
+);
+
+app.post("/api/comments", async (req, res) => {
+  const { runId, userId, contenu } = req.body;
+  await db.execute(
+    "INSERT INTO comments (run_id, user_id, contenu) VALUES (?, ?, ?)",
+    [runId, userId, contenu]
+  );
+  res.send("OK");
 });
 
-// --- GESTION DES RUNS ---
+app.get("/api/runs/:id/comments", async (req, res) => {
+  const [rows] = await db.execute(
+    "SELECT c.*, u.nom FROM comments c JOIN users u ON c.user_id = u.id WHERE c.run_id = ?",
+    [req.params.id]
+  );
+  res.json(rows);
+});
 
-// Récupérer tous les runs avec le nombre de participants
-app.get("/api/runs", async (req, res) => {
+app.listen(3000, () => console.log("Server khdam f port 3000"));
+// Route bach t-creyi "Run" jdid
+app.post("/api/runs", async (req, res) => {
+  const {
+    titre,
+    description,
+    date_course,
+    ville,
+    distance_km,
+    organisateur_id,
+  } = req.body;
   try {
-    const query = `
-            SELECT r.*, COUNT(p.id) as nb_participants 
-            FROM runs r 
-            LEFT JOIN participations p ON r.id = p.run_id 
-            GROUP BY r.id 
-            ORDER BY r.date_course ASC`;
-    const [rows] = await db.execute(query);
-    res.json(rows);
+    await db.execute(
+      "INSERT INTO runs (titre, description, date_course, ville, distance_km, organisateur_id) VALUES (?, ?, ?, ?, ?, ?)",
+      [titre, description, date_course, ville, distance_km, organisateur_id]
+    );
+    res.status(201).json({ message: "Course t-creyat!" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
-
-// Créer un nouvel événement
-app.post("/api/create-run", async (req, res) => {
-  const { titre, date, lieu, ville, distance, niveau, organisateur_id } =
-    req.body;
-  try {
-    await db.execute(
-      "INSERT INTO runs (titre, date_course, lieu_depart, ville, distance_km, niveau_requis, organisateur_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      [titre, date, lieu, ville, distance, niveau, organisateur_id]
-    );
-    res.status(201).json({ message: "Run publié" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Action Rejoindre une course
-app.post("/api/join", async (req, res) => {
-  const { userId, runId } = req.body;
-  try {
-    await db.execute(
-      "INSERT INTO participations (user_id, run_id) VALUES (?, ?)",
-      [userId, runId]
-    );
-    res.json({ message: "Vous avez rejoint la course !" });
-  } catch (err) {
-    res.status(400).json({ error: "Vous êtes déjà inscrit à ce run" });
-  }
-});
-
-const PORT = 3000;
-app.listen(PORT, () => {
-  console.log(`Serveur RunTogether Pro lancé sur http://localhost:${PORT}`);
 });
