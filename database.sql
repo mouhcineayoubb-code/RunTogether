@@ -30,6 +30,12 @@ CREATE TABLE runs (
     ville VARCHAR(100) NOT NULL,
     distance_km DECIMAL(5,2) NOT NULL,
     organisateur_id INT NOT NULL,
+    adresse VARCHAR(255) NULL,
+    lat DECIMAL(10, 8) NULL,
+    lng DECIMAL(11, 8) NULL,
+    niveau ENUM('debutant', 'intermediaire', 'expert') DEFAULT 'debutant',
+    max_participants INT DEFAULT 30,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_organisateur FOREIGN KEY (organisateur_id) 
         REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
@@ -55,6 +61,7 @@ CREATE TABLE comments (
     user_id INT NOT NULL,
     contenu TEXT NOT NULL,
     date_publication TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_comm_run FOREIGN KEY (run_id) REFERENCES runs(id) ON DELETE CASCADE,
     CONSTRAINT fk_comm_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;

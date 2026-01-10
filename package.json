@@ -1,16 +1,24 @@
 {
   "name": "runtogether",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Application web pour connecter les coureurs au Maroc",
+  "main": "Backend/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node Backend/server.js",
+    "dev": "node Backend/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test-db": "node Backend/test-connection.js"
   },
-  "keywords": [],
+  "keywords": [
+    "running",
+    "maroc",
+    "community"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "express-session": "^1.18.2",

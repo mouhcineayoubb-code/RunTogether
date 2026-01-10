@@ -1,7 +1,114 @@
 // Import Leaflet library
 const L = window.L;
 
-// Data for running locations in Morocco
+// API Configuration
+const API_BASE_URL = "http://localhost:3000/api";
+
+// API Helper Functions
+const api = {
+  async get(endpoint) {
+    try {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { error: errorText || `HTTP error! status: ${response.status}` };
+        }
+        const error = new Error(JSON.stringify(errorData));
+        error.status = response.status;
+        throw error;
+      }
+      return await response.json();
+    } catch (error) {
+      console.error("API GET Error:", error);
+      throw error;
+    }
+  },
+
+  async post(endpoint, data) {
+    try {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { error: errorText || `HTTP error! status: ${response.status}` };
+        }
+        const error = new Error(JSON.stringify(errorData));
+        error.status = response.status;
+        throw error;
+      }
+      return await response.json();
+    } catch (error) {
+      console.error("API POST Error:", error);
+      throw error;
+    }
+  },
+
+  async put(endpoint, data) {
+    try {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      console.error("API PUT Error:", error);
+      throw error;
+    }
+  },
+
+  async delete(endpoint, data) {
+    try {
+      let url = `${API_BASE_URL}${endpoint}`;
+      const options = {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      };
+      
+      // Si data est fourni et endpoint n'a pas déjà de query params, utiliser body
+      // Sinon, les query params doivent être dans l'endpoint
+      if (data && !endpoint.includes("?")) {
+        options.body = JSON.stringify(data);
+      }
+      
+      const response = await fetch(url, options);
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { error: errorText || `HTTP error! status: ${response.status}` };
+        }
+        const error = new Error(JSON.stringify(errorData));
+        error.status = response.status;
+        throw error;
+      }
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        return await response.json();
+      }
+      return { message: "Suppression réussie" };
+    } catch (error) {
+      console.error("API DELETE Error:", error);
+      throw error;
+    }
+  },
+};
+
+// Data for running locations in Morocco (fallback data)
 let locations = [
   {
     id: 1,
@@ -382,36 +489,52 @@ function centerOnUserLocation() {
 }
 
 // Google Sign In
-function signInWithGoogle() {
-  const mockUser = {
-    id: Date.now(),
-    name: "Ahmed Benali",
-    email: "ahmed.benali@gmail.com",
-    avatar: "/placeholder.svg?height=100&width=100",
-  };
-
-  currentUser = mockUser;
-  localStorage.setItem("runtogetherUser", JSON.stringify(mockUser));
-  updateAuthUI();
-  navigateTo("home");
+async function signInWithGoogle() {
+  // Rediriger vers le backend OAuth ou créer un utilisateur mock
+  window.location.href = "http://localhost:3000/auth/google";
 }
 
-function handleEmailLogin(e) {
+async function handleEmailLogin(e) {
   e.preventDefault();
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
 
-  const mockUser = {
-    id: Date.now(),
-    name: email.split("@")[0],
-    email: email,
-    avatar: "/placeholder.svg?height=100&width=100",
-  };
+  try {
+    // Chercher ou créer l'utilisateur dans la BDD
+    const users = await api.get("/users");
+    let user = users.find((u) => u.email === email);
+    
+    if (!user) {
+      // Créer un nouvel utilisateur
+      const name = email.split("@")[0];
+      const result = await api.post("/register", {
+        nom: name,
+        email: email,
+        niveau: "Débutant",
+      });
+      
+      // Récupérer l'utilisateur créé
+      const newUsers = await api.get("/users");
+      user = newUsers.find((u) => u.email === email);
+    }
 
-  currentUser = mockUser;
-  localStorage.setItem("runtogetherUser", JSON.stringify(mockUser));
-  updateAuthUI();
-  navigateTo("home");
+    if (user) {
+      currentUser = {
+        id: user.id,
+        name: user.nom,
+        email: user.email,
+        avatar: user.photo_url || "/placeholder.svg?height=100&width=100",
+      };
+      localStorage.setItem("runtogetherUser", JSON.stringify(currentUser));
+      updateAuthUI();
+      navigateTo("home");
+    } else {
+      alert("Erreur lors de la connexion");
+    }
+  } catch (error) {
+    console.error("Login error:", error);
+    alert("Erreur lors de la connexion: " + (error.message || "Erreur inconnue"));
+  }
 }
 
 function logout() {
@@ -541,75 +664,109 @@ function navigateTo(page, data = null) {
 }
 
 // Load run detail
-function loadRunDetail(runId) {
-  const run = runs.find((r) => r.id === runId);
-  if (!run) return;
+async function loadRunDetail(runId) {
+  try {
+    const runData = await api.get(`/runs/${runId}`);
+    // Transform API data to frontend format
+    const run = {
+      id: runData.id,
+      title: runData.titre,
+      location: runData.ville,
+      coords: runData.lat && runData.lng ? [parseFloat(runData.lat), parseFloat(runData.lng)] : null,
+      date: new Date(runData.date_course).toLocaleDateString("fr-FR", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+      }),
+      time: new Date(runData.date_course).toLocaleTimeString("fr-FR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      distance: `${runData.distance_km} km`,
+      difficulty: runData.niveau || "debutant",
+      difficultyLabel: runData.niveau === "debutant" ? "Débutant" : runData.niveau === "intermediaire" ? "Intermédiaire" : "Expert",
+      maxParticipants: runData.max_participants || 30,
+      description: runData.description || "",
+      address: runData.adresse || "",
+      createdBy: runData.organisateur_id,
+    };
 
-  const location = locations.find((l) => l.id === run.locationId);
+    // Load participants
+    try {
+      const participants = await api.get(`/runs/${runId}/participants`);
+      run.participants = participants.length;
+      run.participantsList = participants.map((p) => ({
+        name: p.nom,
+        avatar: p.photo_url || "/placeholder.svg?height=40&width=40",
+      }));
+    } catch (err) {
+      console.error("Error loading participants:", err);
+      run.participants = 0;
+      run.participantsList = [];
+    }
 
-  document.getElementById("detailTitle").textContent = run.title;
-  document.getElementById("detailLocation").innerHTML = `
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-      <circle cx="12" cy="10" r="3"/>
-    </svg>
-    ${run.location}
-  `;
-  document.getElementById("detailDate").textContent = run.date;
-  document.getElementById("detailTime").textContent = run.time;
-  document.getElementById("detailDistance").textContent = run.distance;
-  document.getElementById(
-    "detailParticipants"
-  ).textContent = `${run.participants}/${run.maxParticipants}`;
-  document.getElementById("participantCount").textContent = run.participants;
-  document.getElementById("detailDescription").textContent = run.description;
-
-  const badge = document.getElementById("detailBadge");
-  badge.textContent = run.difficultyLabel;
-  badge.className = `run-badge ${run.difficulty}`;
-
-  document.getElementById("detailAddress").textContent =
-    run.address || (location ? location.address : "");
-
-  // Show coordinates
-  const coords = run.coords || (location ? location.coords : null);
-  if (coords) {
+    document.getElementById("detailTitle").textContent = run.title;
+    document.getElementById("detailLocation").innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+        <circle cx="12" cy="10" r="3"/>
+      </svg>
+      ${run.location}
+    `;
+    document.getElementById("detailDate").textContent = run.date;
+    document.getElementById("detailTime").textContent = run.time;
+    document.getElementById("detailDistance").textContent = run.distance;
     document.getElementById(
-      "detailCoords"
-    ).textContent = `Lat: ${coords[0].toFixed(4)}, Lng: ${coords[1].toFixed(
-      4
-    )}`;
+      "detailParticipants"
+    ).textContent = `${run.participants}/${run.maxParticipants}`;
+    document.getElementById("participantCount").textContent = run.participants;
+    document.getElementById("detailDescription").textContent = run.description;
+
+    const badge = document.getElementById("detailBadge");
+    badge.textContent = run.difficultyLabel;
+    badge.className = `run-badge ${run.difficulty}`;
+
+    document.getElementById("detailAddress").textContent = run.address || "";
+
+    // Show coordinates
+    if (run.coords) {
+      document.getElementById(
+        "detailCoords"
+      ).textContent = `Lat: ${run.coords[0].toFixed(4)}, Lng: ${run.coords[1].toFixed(4)}`;
+    }
+
+    const participantsList = document.getElementById("participantsList");
+    participantsList.innerHTML = run.participantsList
+      .map(
+        (p) => `
+        <div class="participant-item">
+          <img src="${p.avatar}" alt="${p.name}">
+          <span>${p.name}</span>
+        </div>
+      `
+      )
+      .join("");
+
+    renderComments(runId);
+
+    // Show/hide edit and delete buttons based on ownership
+    const editBtn = document.getElementById("editRunBtn");
+    const deleteBtn = document.getElementById("deleteRunBtn");
+    const isOwner = currentUser && run.createdBy === currentUser.id;
+
+    editBtn.style.display = isOwner ? "inline-flex" : "none";
+    deleteBtn.style.display = isOwner ? "inline-flex" : "none";
+
+    setTimeout(() => {
+      const mapCoords = run.coords || [33.5927, -7.6356];
+      initDetailMap(mapCoords);
+    }, 100);
+
+    updateJoinButton(runId);
+  } catch (error) {
+    console.error("Error loading run detail:", error);
+    alert("Erreur lors du chargement de la course");
   }
-
-  const participantsList = document.getElementById("participantsList");
-  participantsList.innerHTML = run.participantsList
-    .map(
-      (p) => `
-      <div class="participant-item">
-        <img src="${p.avatar}" alt="${p.name}">
-        <span>${p.name}</span>
-      </div>
-    `
-    )
-    .join("");
-
-  renderComments(runId);
-
-  // Show/hide edit and delete buttons based on ownership
-  const editBtn = document.getElementById("editRunBtn");
-  const deleteBtn = document.getElementById("deleteRunBtn");
-  const isOwner = currentUser && run.createdBy === currentUser.id;
-
-  editBtn.style.display = isOwner ? "inline-flex" : "none";
-  deleteBtn.style.display = isOwner ? "inline-flex" : "none";
-
-  setTimeout(() => {
-    const mapCoords =
-      run.coords || (location ? location.coords : [33.5927, -7.6356]);
-    initDetailMap(mapCoords);
-  }, 100);
-
-  updateJoinButton(runId);
 }
 
 function initDetailMap(coords) {
@@ -642,35 +799,59 @@ function initDetailMap(coords) {
 }
 
 // Render comments
-function renderComments(runId) {
+async function renderComments(runId) {
   const container = document.getElementById("commentsContainer");
-  const comments = commentsData[runId] || [];
+  try {
+    const commentsData = await api.get(`/runs/${runId}/comments`);
+    
+    if (commentsData.length === 0) {
+      container.innerHTML =
+        '<p class="no-comments">Aucun commentaire pour le moment. Soyez le premier a commenter !</p>';
+      return;
+    }
 
-  if (comments.length === 0) {
-    container.innerHTML =
-      '<p class="no-comments">Aucun commentaire pour le moment. Soyez le premier a commenter !</p>';
-    return;
-  }
-
-  container.innerHTML = comments
-    .map(
-      (comment) => `
-      <div class="comment-item">
-        <img src="${comment.avatar}" alt="${comment.author}">
-        <div class="comment-content">
-          <div class="comment-header">
-            <span class="comment-author">${comment.author}</span>
-            <span class="comment-time">${comment.time}</span>
+    container.innerHTML = commentsData
+      .map(
+        (comment) => {
+          const date = new Date(comment.date_publication || comment.created_at);
+          const timeAgo = formatTimeAgo(date);
+          return `
+          <div class="comment-item">
+            <img src="/placeholder.svg?height=40&width=40" alt="${comment.nom}">
+            <div class="comment-content">
+              <div class="comment-header">
+                <span class="comment-author">${comment.nom}</span>
+                <span class="comment-time">${timeAgo}</span>
+              </div>
+              <p class="comment-text">${comment.contenu}</p>
+            </div>
           </div>
-          <p class="comment-text">${comment.text}</p>
-        </div>
-      </div>
-    `
-    )
-    .join("");
+        `;
+        }
+      )
+      .join("");
+  } catch (error) {
+    console.error("Error loading comments:", error);
+    container.innerHTML =
+      '<p class="no-comments">Erreur lors du chargement des commentaires.</p>';
+  }
 }
 
-function addComment(e) {
+function formatTimeAgo(date) {
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return "A l'instant";
+  if (diffMins < 60) return `Il y a ${diffMins} min`;
+  if (diffHours < 24) return `Il y a ${diffHours}h`;
+  if (diffDays < 7) return `Il y a ${diffDays}j`;
+  return date.toLocaleDateString("fr-FR");
+}
+
+async function addComment(e) {
   e.preventDefault();
 
   if (!currentUser) {
@@ -681,71 +862,105 @@ function addComment(e) {
   const input = document.getElementById("commentInput");
   const text = input.value.trim();
 
-  if (!text) return;
+  if (!text || !currentRunId) return;
 
-  const newComment = {
-    id: Date.now(),
-    author: currentUser.name,
-    avatar: currentUser.avatar,
-    text: text,
-    time: "A l'instant",
-  };
-
-  if (!commentsData[currentRunId]) {
-    commentsData[currentRunId] = [];
+  try {
+    await api.post("/comments", {
+      runId: currentRunId,
+      userId: currentUser.id,
+      contenu: text,
+    });
+    input.value = "";
+    await renderComments(currentRunId);
+  } catch (error) {
+    console.error("Error adding comment:", error);
+    alert("Erreur lors de l'ajout du commentaire");
   }
-
-  commentsData[currentRunId].push(newComment);
-  renderComments(currentRunId);
-  input.value = "";
 }
 
-function toggleJoinRun() {
+async function toggleJoinRun() {
   if (!currentUser) {
     navigateTo("login");
     return;
   }
 
-  const run = runs.find((r) => r.id === currentRunId);
-  if (!run) return;
-
-  const joinedRuns = JSON.parse(localStorage.getItem("joinedRuns") || "[]");
-  const isJoined = joinedRuns.includes(currentRunId);
-
-  if (isJoined) {
-    const index = joinedRuns.indexOf(currentRunId);
-    joinedRuns.splice(index, 1);
-    run.participants--;
-  } else {
-    if (run.participants >= run.maxParticipants) {
-      alert("Cette course est complete !");
-      return;
-    }
-    joinedRuns.push(currentRunId);
-    run.participants++;
+  if (!currentRunId) {
+    alert("Aucune course sélectionnée");
+    return;
   }
 
-  localStorage.setItem("joinedRuns", JSON.stringify(joinedRuns));
-  updateJoinButton(currentRunId);
-  document.getElementById(
-    "detailParticipants"
-  ).textContent = `${run.participants}/${run.maxParticipants}`;
-  document.getElementById("participantCount").textContent = run.participants;
+  if (!currentUser.id) {
+    alert("Erreur: ID utilisateur manquant. Veuillez vous reconnecter.");
+    return;
+  }
+
+  const btn = document.getElementById("joinBtn");
+  const isCurrentlyJoined = btn.textContent === "Quitter";
+
+  try {
+    if (isCurrentlyJoined) {
+      // Leave run - utiliser query params pour DELETE
+      await api.delete(`/runs/${currentRunId}/join?userId=${currentUser.id}`);
+    } else {
+      // Join run
+      await api.post(`/runs/${currentRunId}/join`, { userId: currentUser.id });
+    }
+    // Reload run detail to get updated participant count
+    await loadRunDetail(currentRunId);
+  } catch (error) {
+    console.error("Error toggling join:", error);
+    let errorMessage = "Erreur lors de l'opération";
+    if (error.message) {
+      try {
+        const errorData = JSON.parse(error.message);
+        errorMessage = errorData.error || errorMessage;
+      } catch {
+        if (error.message.includes("400")) {
+          errorMessage = "Impossible de rejoindre/quitter cette course";
+        } else if (error.message.includes("404")) {
+          errorMessage = "Course ou utilisateur non trouvé";
+        } else if (error.message.includes("500")) {
+          errorMessage = "Erreur serveur. Vérifiez la console pour plus de détails.";
+        }
+      }
+    }
+    alert(errorMessage);
+  }
 }
 
-function updateJoinButton(runId) {
-  const joinedRuns = JSON.parse(localStorage.getItem("joinedRuns") || "[]");
-  const isJoined = joinedRuns.includes(runId);
-  const btn = document.getElementById("joinBtn");
+async function updateJoinButton(runId) {
+  if (!currentUser || !runId) {
+    const btn = document.getElementById("joinBtn");
+    if (btn) {
+      btn.textContent = "Rejoindre";
+      btn.classList.add("btn-primary");
+      btn.classList.remove("btn-outline");
+    }
+    return;
+  }
 
-  if (isJoined) {
-    btn.textContent = "Quitter";
-    btn.classList.remove("btn-primary");
-    btn.classList.add("btn-outline");
-  } else {
-    btn.textContent = "Rejoindre";
-    btn.classList.add("btn-primary");
-    btn.classList.remove("btn-outline");
+  try {
+    const participants = await api.get(`/runs/${runId}/participants`);
+    const isJoined = participants.some((p) => p.id === currentUser.id);
+    const btn = document.getElementById("joinBtn");
+
+    if (isJoined) {
+      btn.textContent = "Quitter";
+      btn.classList.remove("btn-primary");
+      btn.classList.add("btn-outline");
+    } else {
+      btn.textContent = "Rejoindre";
+      btn.classList.add("btn-primary");
+      btn.classList.remove("btn-outline");
+    }
+  } catch (error) {
+    console.error("Error updating join button:", error);
+    const btn = document.getElementById("joinBtn");
+    if (btn) {
+      btn.textContent = "Rejoindre";
+      btn.classList.add("btn-primary");
+      btn.classList.remove("btn-outline");
+    }
   }
 }
 
@@ -979,8 +1194,13 @@ function initModalMap(initialCoords = null) {
   });
 }
 
-function handleRunSubmit(e) {
+async function handleRunSubmit(e) {
   e.preventDefault();
+
+  if (!currentUser) {
+    navigateTo("login");
+    return;
+  }
 
   const title = document.getElementById("runTitle").value;
   const city = document.getElementById("runCity").value;
@@ -1001,114 +1221,88 @@ function handleRunSubmit(e) {
     return;
   }
 
-  const difficultyLabels = {
-    debutant: "Debutant",
-    intermediaire: "Intermediaire",
-    expert: "Expert",
-  };
+  // Combine date and time into a single datetime string
+  const dateTime = new Date(`${date}T${time}`);
+  const dateTimeString = dateTime.toISOString().slice(0, 19).replace("T", " ");
 
-  const formattedDate = new Date(date).toLocaleDateString("fr-FR", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
-
-  if (editingRunId) {
-    // Update existing run
-    const runIndex = runs.findIndex((r) => r.id === editingRunId);
-    if (runIndex !== -1) {
-      runs[runIndex] = {
-        ...runs[runIndex],
-        title,
-        location: city,
-        date: formattedDate,
-        time,
-        distance: `${distance} km`,
-        difficulty,
-        difficultyLabel: difficultyLabels[difficulty],
-        maxParticipants,
-        description,
-        address,
-        coords: [lat, lng],
-      };
-
-      // Update location if user created it
-      const locIndex = locations.findIndex(
-        (l) =>
-          l.id === runs[runIndex].locationId && l.createdBy === currentUser.id
-      );
-      if (locIndex !== -1) {
-        locations[locIndex].coords = [lat, lng];
-        locations[locIndex].name = title;
-        locations[locIndex].city = city;
-        locations[locIndex].address = address;
-      }
-    }
-  } else {
-    // Create new run
-    const newLocationId = Date.now();
-    const newRun = {
-      id: Date.now(),
-      title,
-      location: city,
-      locationId: newLocationId,
-      coords: [lat, lng],
-      date: formattedDate,
-      time,
-      distance: `${distance} km`,
-      difficulty,
-      difficultyLabel: difficultyLabels[difficulty],
-      participants: 1,
-      maxParticipants,
-      initials: [currentUser.name.substring(0, 2).toUpperCase()],
-      description,
-      address,
-      createdBy: currentUser.id,
-      participantsList: [
-        { name: currentUser.name, avatar: currentUser.avatar },
-      ],
-    };
-
-    // Add new location
-    const newLocation = {
-      id: newLocationId,
-      name: title,
-      city,
-      coords: [lat, lng],
-      distance: `${distance} km`,
-      difficulty: difficultyLabels[difficulty],
-      runners: 1,
-      address,
-      isUserCreated: true,
-      createdBy: currentUser.id,
-    };
-
-    runs.unshift(newRun);
-    locations.push(newLocation);
-
-    // Auto-join the run
-    const joinedRuns = JSON.parse(localStorage.getItem("joinedRuns") || "[]");
-    joinedRuns.push(newRun.id);
-    localStorage.setItem("joinedRuns", JSON.stringify(joinedRuns));
+  // Vérifier que l'ID utilisateur existe
+  if (!currentUser || !currentUser.id) {
+    alert("Erreur: Vous devez être connecté avec un compte valide pour créer une course.");
+    return;
   }
 
-  // Save to localStorage
-  localStorage.setItem(
-    "userRuns",
-    JSON.stringify(runs.filter((r) => r.createdBy === currentUser.id))
-  );
-  localStorage.setItem(
-    "userLocations",
-    JSON.stringify(locations.filter((l) => l.createdBy === currentUser.id))
-  );
+  try {
+    if (editingRunId) {
+      // Update existing run
+      await api.put(`/runs/${editingRunId}`, {
+        titre: title,
+        description,
+        date_course: dateTimeString,
+        ville: city,
+        distance_km: parseFloat(distance),
+        adresse: address,
+        lat,
+        lng,
+        niveau: difficulty,
+        max_participants: maxParticipants,
+      });
+      alert("Course mise à jour avec succès!");
+      await loadRuns();
+      await loadRunDetail(editingRunId);
+    } else {
+      // Create new run
+      const result = await api.post("/runs", {
+        titre: title,
+        description,
+        date_course: dateTimeString,
+        ville: city,
+        distance_km: parseFloat(distance),
+        organisateur_id: currentUser.id,
+        adresse: address,
+        lat,
+        lng,
+        niveau: difficulty,
+        max_participants: maxParticipants,
+      });
+      
+      if (!result || !result.id) {
+        alert("Erreur: La course a été créée mais l'ID n'a pas été retourné. Rafraîchissez la page.");
+        await loadRuns();
+        return;
+      }
+      
+      alert("Course créée avec succès!");
+      
+      // Auto-join the run (l'organisateur s'inscrit automatiquement)
+      try {
+        await api.post(`/runs/${result.id}/join`, { userId: currentUser.id });
+      } catch (err) {
+        console.error("Error auto-joining run:", err);
+        // Ne pas bloquer si l'auto-join échoue
+      }
+      
+      await loadRuns();
+    }
 
-  closeRunModal();
-  renderRuns();
-  renderLocationList();
-  refreshMapMarkers();
-
-  if (editingRunId) {
-    loadRunDetail(editingRunId);
+    closeRunModal();
+    renderLocationList();
+    refreshMapMarkers();
+  } catch (error) {
+    console.error("Error submitting run:", error);
+    let errorMessage = "Erreur lors de la sauvegarde de la course";
+    if (error.message) {
+      try {
+        const errorData = JSON.parse(error.message);
+        errorMessage = errorData.error || errorMessage;
+      } catch {
+        if (error.message.includes("400")) {
+          errorMessage = "Données invalides. Vérifiez tous les champs.";
+        } else if (error.message.includes("500")) {
+          errorMessage = "Erreur serveur. Vérifiez que la base de données est configurée.";
+        }
+      }
+    }
+    alert(errorMessage);
   }
 }
 
@@ -1120,106 +1314,141 @@ function closeDeleteModal() {
   document.getElementById("deleteModal").style.display = "none";
 }
 
-function deleteRun() {
+async function deleteRun() {
   if (!currentUser || !currentRunId) return;
 
-  const run = runs.find((r) => r.id === currentRunId);
-  if (!run || run.createdBy !== currentUser.id) return;
-
-  // Remove run
-  runs = runs.filter((r) => r.id !== currentRunId);
-
-  // Remove associated location
-  locations = locations.filter(
-    (l) => l.id !== run.locationId || l.createdBy !== currentUser.id
-  );
-
-  // Remove from joined runs
-  let joinedRuns = JSON.parse(localStorage.getItem("joinedRuns") || "[]");
-  joinedRuns = joinedRuns.filter((id) => id !== currentRunId);
-  localStorage.setItem("joinedRuns", JSON.stringify(joinedRuns));
-
-  // Update localStorage
-  localStorage.setItem(
-    "userRuns",
-    JSON.stringify(runs.filter((r) => r.createdBy === currentUser?.id))
-  );
-  localStorage.setItem(
-    "userLocations",
-    JSON.stringify(locations.filter((l) => l.createdBy === currentUser?.id))
-  );
-
-  closeDeleteModal();
-  navigateTo("home");
-  renderRuns();
-  renderLocationList();
-  refreshMapMarkers();
+  try {
+    await api.delete(`/runs/${currentRunId}`);
+    alert("Course supprimée avec succès!");
+    closeDeleteModal();
+    await loadRuns();
+    navigateTo("home");
+    renderLocationList();
+    refreshMapMarkers();
+  } catch (error) {
+    console.error("Error deleting run:", error);
+    alert("Erreur lors de la suppression de la course");
+  }
 }
 
-function renderMyRuns() {
+async function renderMyRuns() {
   const container = document.getElementById("myRunsGrid");
-  const myRuns = runs.filter((r) => r.createdBy === currentUser?.id);
-
-  if (myRuns.length === 0) {
+  
+  if (!currentUser) {
     container.innerHTML = `
       <div class="no-runs-message">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="48" height="48">
-          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-        </svg>
-        <p>Vous n'avez pas encore cree de course.</p>
-        <button class="btn btn-primary" onclick="showCreateRunModal()">Creer ma premiere course</button>
+        <p>Veuillez vous connecter pour voir vos courses.</p>
       </div>
     `;
     return;
   }
 
-  container.innerHTML = myRuns
-    .map(
-      (run) => `
-    <div class="run-card my-run">
-      <div class="run-header">
-        <div>
-          <h3 class="run-title">${run.title}<span class="my-run-badge">Ma course</span></h3>
-          <p class="run-location">${run.location}</p>
-        </div>
-        <span class="run-badge ${run.difficulty}">${run.difficultyLabel}</span>
-      </div>
-      <div class="run-details">
-        <div class="run-detail">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-            <line x1="16" y1="2" x2="16" y2="6"/>
-            <line x1="8" y1="2" x2="8" y2="6"/>
-            <line x1="3" y1="10" x2="21" y2="10"/>
+  try {
+    const myRunsData = await api.get(`/users/${currentUser.id}/runs`);
+    
+    if (myRunsData.length === 0) {
+      container.innerHTML = `
+        <div class="no-runs-message">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="48" height="48">
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
           </svg>
-          ${run.date}
+          <p>Vous n'avez pas encore cree de course.</p>
+          <button class="btn btn-primary" onclick="showCreateRunModal()">Creer ma premiere course</button>
         </div>
-        <div class="run-detail">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <polyline points="12,6 12,12 16,14"/>
-          </svg>
-          ${run.time}
+      `;
+      return;
+    }
+
+    // Transform API data to frontend format
+    const myRuns = myRunsData.map((run) => ({
+      id: run.id,
+      title: run.titre,
+      location: run.ville,
+      coords: run.lat && run.lng ? [parseFloat(run.lat), parseFloat(run.lng)] : null,
+      date: new Date(run.date_course).toLocaleDateString("fr-FR", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+      }),
+      time: new Date(run.date_course).toLocaleTimeString("fr-FR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      distance: `${run.distance_km} km`,
+      difficulty: run.niveau || "debutant",
+      difficultyLabel: run.niveau === "debutant" ? "Débutant" : run.niveau === "intermediaire" ? "Intermédiaire" : "Expert",
+      participants: 0,
+      maxParticipants: run.max_participants || 30,
+      description: run.description || "",
+      address: run.adresse || "",
+      createdBy: run.organisateur_id,
+    }));
+
+    // Load participants count for each run
+    for (const run of myRuns) {
+      try {
+        const participants = await api.get(`/runs/${run.id}/participants`);
+        run.participants = participants.length;
+      } catch (err) {
+        console.error("Error loading participants for run", run.id, err);
+      }
+    }
+
+    container.innerHTML = myRuns
+      .map(
+        (run) => `
+      <div class="run-card my-run">
+        <div class="run-header">
+          <div>
+            <h3 class="run-title">${run.title}<span class="my-run-badge">Ma course</span></h3>
+            <p class="run-location">${run.location}</p>
+          </div>
+          <span class="run-badge ${run.difficulty}">${run.difficultyLabel}</span>
         </div>
-        <div class="run-detail">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M18 6L6 18M6 6l12 12"/>
-          </svg>
-          ${run.distance}
+        <div class="run-details">
+          <div class="run-detail">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            ${run.date}
+          </div>
+          <div class="run-detail">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12,6 12,12 16,14"/>
+            </svg>
+            ${run.time}
+          </div>
+          <div class="run-detail">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+            ${run.distance}
+          </div>
+        </div>
+        <div class="run-footer">
+          <div class="run-participants">
+            <span class="participant-count">${run.participants}/${run.maxParticipants} participants</span>
+          </div>
+          <div class="run-card-actions">
+            <button class="btn btn-outline" onclick="navigateTo('runDetail', { runId: ${run.id} })">Voir</button>
+          </div>
         </div>
       </div>
-      <div class="run-footer">
-        <div class="run-participants">
-          <span class="participant-count">${run.participants}/${run.maxParticipants} participants</span>
-        </div>
-        <div class="run-card-actions">
-          <button class="btn btn-outline" onclick="navigateTo('runDetail', { runId: ${run.id} })">Voir</button>
-        </div>
+    `
+      )
+      .join("");
+  } catch (error) {
+    console.error("Error loading my runs:", error);
+    container.innerHTML = `
+      <div class="no-runs-message">
+        <p>Erreur lors du chargement de vos courses.</p>
       </div>
-    </div>
-  `
-    )
-    .join("");
+    `;
+  }
 }
 
 // Initialize map
@@ -1454,30 +1683,87 @@ function initSmoothScroll() {
   });
 }
 
+// Load runs from API
+async function loadRuns() {
+  try {
+    const data = await api.get("/runs");
+    // Transform API data to frontend format
+    runs = data.map((run) => ({
+      id: run.id,
+      title: run.titre,
+      location: run.ville,
+      locationId: run.id,
+      coords: run.lat && run.lng ? [parseFloat(run.lat), parseFloat(run.lng)] : null,
+      date: new Date(run.date_course).toLocaleDateString("fr-FR", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+      }),
+      time: new Date(run.date_course).toLocaleTimeString("fr-FR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      distance: `${run.distance_km} km`,
+      difficulty: run.niveau || "debutant",
+      difficultyLabel: run.niveau === "debutant" ? "Débutant" : run.niveau === "intermediaire" ? "Intermédiaire" : "Expert",
+      participants: 0, // Will be loaded separately
+      maxParticipants: run.max_participants || 30,
+      initials: [],
+      description: run.description || "",
+      address: run.adresse || "",
+      createdBy: run.organisateur_id,
+      participantsList: [],
+    }));
+    // Load participants count for each run
+    for (const run of runs) {
+      try {
+        const participants = await api.get(`/runs/${run.id}/participants`);
+        run.participants = participants.length;
+        run.participantsList = participants.map((p) => ({
+          name: p.nom,
+          avatar: p.photo_url || "/placeholder.svg?height=40&width=40",
+        }));
+        run.initials = participants.slice(0, 4).map((p) => p.nom.substring(0, 2).toUpperCase());
+      } catch (err) {
+        console.error("Error loading participants for run", run.id, err);
+      }
+    }
+    renderRuns();
+  } catch (error) {
+    console.error("Error loading runs:", error);
+    // Keep default runs as fallback
+    renderRuns();
+  }
+}
+
 // Check for existing session
 function checkSession() {
-  const savedUser = localStorage.getItem("runtogetherUser");
-  if (savedUser) {
-    currentUser = JSON.parse(savedUser);
-    updateAuthUI();
-
-    // Load user's runs and locations
-    const userRuns = JSON.parse(localStorage.getItem("userRuns") || "[]");
-    const userLocations = JSON.parse(
-      localStorage.getItem("userLocations") || "[]"
-    );
-
-    userRuns.forEach((run) => {
-      if (!runs.find((r) => r.id === run.id)) {
-        runs.unshift(run);
+  // Vérifier si l'utilisateur vient du callback OAuth
+  const urlParams = new URLSearchParams(window.location.search);
+  const userParam = urlParams.get("user");
+  if (userParam) {
+    try {
+      const user = JSON.parse(decodeURIComponent(userParam));
+      currentUser = user;
+      localStorage.setItem("runtogetherUser", JSON.stringify(user));
+      updateAuthUI();
+      // Nettoyer l'URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } catch (e) {
+      console.error("Error parsing user from URL:", e);
+    }
+  } else {
+    // Sinon, charger depuis localStorage
+    const savedUser = localStorage.getItem("runtogetherUser");
+    if (savedUser) {
+      try {
+        currentUser = JSON.parse(savedUser);
+        updateAuthUI();
+      } catch (e) {
+        console.error("Error parsing saved user:", e);
+        localStorage.removeItem("runtogetherUser");
       }
-    });
-
-    userLocations.forEach((loc) => {
-      if (!locations.find((l) => l.id === loc.id)) {
-        locations.push(loc);
-      }
-    });
+    }
   }
 
   // Check dark mode preference
@@ -1493,11 +1779,11 @@ function checkSession() {
 }
 
 // Initialize everything when DOM is ready
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   checkSession();
   initMap();
   renderLocationList();
-  renderRuns();
+  await loadRuns();
   initMobileMenu();
   initSmoothScroll();
 });
