@@ -1,7 +1,6 @@
 require("dotenv").config();
 const mysql = require("mysql2");
 
-// Creer l-connexion m3a l-base de données
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -11,4 +10,4 @@ const pool = mysql.createPool({
   connectionLimit: 10,
 });
 
-module.exports = pool.promise(); // Bach n-khdmou b async/await
+module.exports = pool.promise(); // Bach nkhdmou b async/await

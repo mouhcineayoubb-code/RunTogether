@@ -1,4 +1,4 @@
-require("dotenv").config(); // Darori hiya l-lowla
+require("dotenv").config();
 const express = require("express");
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
@@ -61,15 +61,21 @@ app.get(
   (req, res) => {
     // Après authentification réussie, rediriger avec les infos utilisateur dans l'URL
     if (req.user) {
-      const userData = encodeURIComponent(JSON.stringify({
-        id: req.user.id,
-        name: req.user.nom,
-        email: req.user.email,
-        avatar: req.user.photo_url || "/placeholder.svg?height=100&width=100",
-      }));
-      res.redirect(`http://localhost:5500/Frontend/index.html?user=${userData}`);
+      const userData = encodeURIComponent(
+        JSON.stringify({
+          id: req.user.id,
+          name: req.user.nom,
+          email: req.user.email,
+          avatar: req.user.photo_url || "/placeholder.svg?height=100&width=100",
+        })
+      );
+      res.redirect(
+        `http://localhost:5500/Frontend/index.html?user=${userData}`
+      );
     } else {
-      res.redirect("http://localhost:5500/Frontend/index.html?error=authentication_failed");
+      res.redirect(
+        "http://localhost:5500/Frontend/index.html?error=authentication_failed"
+      );
     }
   }
 );
@@ -81,7 +87,9 @@ app.post("/api/comments", async (req, res) => {
       "INSERT INTO comments (run_id, user_id, contenu) VALUES (?, ?, ?)",
       [runId, userId, contenu]
     );
-    res.status(201).json({ message: "Commentaire ajouté!", id: result.insertId });
+    res
+      .status(201)
+      .json({ message: "Commentaire ajouté!", id: result.insertId });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -92,10 +100,9 @@ app.post("/api/register", async (req, res) => {
   const { nom, email, niveau } = req.body;
   try {
     // Vérifier si l'utilisateur existe déjà
-    const [existing] = await db.execute(
-      "SELECT * FROM users WHERE email = ?",
-      [email]
-    );
+    const [existing] = await db.execute("SELECT * FROM users WHERE email = ?", [
+      email,
+    ]);
     if (existing.length > 0) {
       return res.status(400).json({ error: "Cet email est déjà utilisé" });
     }
@@ -255,11 +262,13 @@ app.post("/api/runs/:id/join", async (req, res) => {
   }
   try {
     // Vérifier si l'utilisateur existe
-    const [userCheck] = await db.execute("SELECT id FROM users WHERE id = ?", [userId]);
+    const [userCheck] = await db.execute("SELECT id FROM users WHERE id = ?", [
+      userId,
+    ]);
     if (userCheck.length === 0) {
       return res.status(404).json({ error: "Utilisateur non trouvé" });
     }
-    
+
     // Vérifier si l'utilisateur est déjà inscrit
     const [existing] = await db.execute(
       "SELECT * FROM participations WHERE user_id = ? AND run_id = ?",
@@ -268,7 +277,7 @@ app.post("/api/runs/:id/join", async (req, res) => {
     if (existing.length > 0) {
       return res.status(400).json({ error: "Déjà inscrit à cette course" });
     }
-    
+
     // Vérifier le nombre de participants
     const [runRows] = await db.execute(
       "SELECT max_participants FROM runs WHERE id = ?",
@@ -277,16 +286,16 @@ app.post("/api/runs/:id/join", async (req, res) => {
     if (runRows.length === 0) {
       return res.status(404).json({ error: "Course non trouvée" });
     }
-    
+
     const [participantsCount] = await db.execute(
       "SELECT COUNT(*) as count FROM participations WHERE run_id = ?",
       [req.params.id]
     );
-    
+
     if (participantsCount[0].count >= (runRows[0].max_participants || 30)) {
       return res.status(400).json({ error: "Course complète" });
     }
-    
+
     await db.execute(
       "INSERT INTO participations (user_id, run_id) VALUES (?, ?)",
       [userId, req.params.id]
@@ -302,7 +311,9 @@ app.delete("/api/runs/:id/join", async (req, res) => {
   // Utiliser query params ou body pour DELETE (Express peut parser les deux)
   const userId = req.query.userId || (req.body && req.body.userId) || null;
   if (!userId) {
-    return res.status(400).json({ error: "userId est requis (utilisez ?userId=... dans l'URL)" });
+    return res
+      .status(400)
+      .json({ error: "userId est requis (utilisez ?userId=... dans l'URL)" });
   }
   try {
     const [result] = await db.execute(
